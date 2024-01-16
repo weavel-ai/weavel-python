@@ -30,6 +30,8 @@ setup(
         "termcolor",
         "watchdog",
         "readerwriterlock",
+        "pendulum",
+        "httpx[http2]"
     ],
     python_requires=">=3.8.10",
     keywords=[

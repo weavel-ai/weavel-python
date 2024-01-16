@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from enum import Enum
 from uuid import UUID
@@ -26,4 +26,52 @@ class DataType(str, Enum):
     assistant_message = "assistant_message"
     inner_step = "inner_step"
     retrieved_content = "retrieved_content"
+
+class BackgroundTaskType(str, Enum):
+    start_trace = "start_trace"
+    log_trace_data = "log_trace_data"
+    save_metadata_trace = "save_metadata_trace"
+    save_metadata_trace_data = "save_metadata_trace_data"
+    create_tags_trace_data = "create_tags_trace_data"
     
+class StartTraceBody(WeavelObject):
+    """Start Trace body."""
+    user_uuid: str
+    trace_uuid: str
+    timestamp: Optional[str] = None
+    metadata: Optional[Dict[str, str]] = None
+
+class SaveTraceDataBody(WeavelObject):
+    """Log body."""
+    trace_uuid: str
+    data_type: str
+    data_content: str
+    timestamp: Optional[str] = None
+    unit_name: Optional[str] = None
+    metadata: Optional[Dict[str, str]] = None
+    
+class SaveMetadataTraceBody(WeavelObject):
+    """Save metadata body."""
+    trace_uuid: str
+    metadata: Dict[str, str]
+
+class SaveMetadataTraceDataBody(WeavelObject):
+    """Save trace_data metadata body."""
+    trace_uuid: str
+    data_type: str
+    data_content: str
+    metadata: Dict[str, str]
+    
+class WeavelRequest(WeavelObject):
+    """Weavel Request."""
+    task: str
+    body: Union[StartTraceBody, SaveTraceDataBody, SaveMetadataTraceBody, SaveMetadataTraceDataBody]
+    
+    @validator('task', pre=True)
+    def validate_task(cls, v):
+        if v not in BackgroundTaskType.__members__:
+            raise ValueError(f"Invalid task type: {v}. Must be one of {list(BackgroundTaskType.__members__.keys())}")
+        return v
+    
+class BatchRequest(WeavelObject):
+    requests: list[WeavelRequest]
