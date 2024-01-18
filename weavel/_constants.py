@@ -4,6 +4,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 if os.getenv("TESTING") == "true":
-    BACKEND_SERVER_URL = "http://localhost:8000/"
+    BACKEND_SERVER_URL = "http://localhost:8000"
 else:
-    BACKEND_SERVER_URL = "https://unravel.up.railway.app/"
+    BACKEND_SERVER_URL = "https://unravel.up.railway.app"

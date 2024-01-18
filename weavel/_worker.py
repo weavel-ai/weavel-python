@@ -146,7 +146,7 @@ class Worker:
                 response = self.api_client.execute(
                     self.api_key,
                     self.endpoint,
-                    "trace",
+                    "/trace",
                     method="POST",
                     json=request.model_dump(),
                     timeout=10,
@@ -165,7 +165,7 @@ class Worker:
                 response = self.api_client.execute(
                     self.api_key,
                     self.endpoint,
-                    "trace/batch",
+                    "/trace/batch",
                     method="POST",
                     json={"requests": [request.model_dump() for request in requests]},
                     timeout=10,
