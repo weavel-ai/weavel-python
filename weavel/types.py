@@ -22,6 +22,7 @@ class WeavelObject(BaseModel):
         
         
 class DataType(str, Enum):
+    system_message = "system_message"
     user_message = "user_message"
     assistant_message = "assistant_message"
     inner_step = "inner_step"

@@ -24,3 +24,5 @@ dist/*
 
 .coverage
 key.key
+
+.pypirc
