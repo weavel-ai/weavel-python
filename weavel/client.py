@@ -11,12 +11,13 @@ from dotenv import load_dotenv
 from weavel.types import DataType
 from weavel._worker import Worker
 
+load_dotenv()
+
 class WeavelClient:
     def __init__(
         self,
         api_key: Optional[str] = None,
     ):
-        load_dotenv()
         self.api_key = api_key or os.getenv("WEAVEL_API_KEY")
         assert self.api_key is not None, "API key not provided."
         self.log = Worker(self.api_key)

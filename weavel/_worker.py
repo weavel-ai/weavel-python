@@ -34,7 +34,7 @@ class Worker:
         
         self.max_retry = 3
         self.flush_interval = 60
-        self.flush_batch_size = 5
+        self.flush_batch_size = 20
         
         self.api_client = APIClient()
         
@@ -163,6 +163,37 @@ class Worker:
                 "timestamp": str(timestamp or datetime.now().isoformat()),
                 "trace_uuid": trace_uuid,
                 "data_type": DataType.system_message,
+                "data_content": data_content,
+                "unit_name": unit_name,
+                "metadata": metadata,
+            }).model_dump()
+        })
+        self.buffer_storage.push(request)
+        return
+    
+    def inner_step(
+        self,
+        trace_uuid: str,
+        data_content: str,
+        unit_name: Optional[str] = None,
+        timestamp: Optional[datetime] = None,
+        metadata: Optional[Dict[str, str]] = None,
+    ):
+        """Log the "inner_step" type data to the trace.
+        
+        Args:
+            trace_uuid: The trace UUID.
+            data_content: The data content.
+            unit_name: The unit name.
+            timestamp: The timestamp.
+            metadata: The metadata.
+        """
+        request = WeavelRequest(**{
+            "task": BackgroundTaskType.log_trace_data.value,
+            "body" : SaveTraceDataBody(**{
+                "timestamp": str(timestamp or datetime.now().isoformat()),
+                "trace_uuid": trace_uuid,
+                "data_type": DataType.inner_step,
                 "data_content": data_content,
                 "unit_name": unit_name,
                 "metadata": metadata,
