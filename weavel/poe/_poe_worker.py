@@ -8,18 +8,8 @@ from typing import Dict, List, Optional, Union
 from threading import Thread
 from concurrent.futures import Future, ThreadPoolExecutor
 
-import requests
-import pendulum
-
 from fastapi_poe import QueryRequest, PartialResponse
 
-from weavel.types import (
-    DataType,
-    BackgroundTaskType,
-    StartTraceBody,
-    SaveTraceDataBody,
-    SaveMetadataTraceBody
-)
 from weavel._constants import BACKEND_SERVER_URL
 from weavel._api_client import APIClient
 from weavel.utils import logger

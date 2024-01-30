@@ -8,9 +8,6 @@ from typing import Dict, List, Optional, Union
 from threading import Thread
 from concurrent.futures import Future, ThreadPoolExecutor
 
-import requests
-import pendulum
-
 from weavel.types import (
     DataType,
     BackgroundTaskType,
