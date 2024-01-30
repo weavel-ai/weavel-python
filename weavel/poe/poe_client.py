@@ -20,7 +20,6 @@ class WeavelPoeClient:
         api_key: Optional[str] = None,
     ):
         self.api_key = api_key or os.getenv("WEAVEL_API_KEY")
-        print(self.api_key)
         assert self.api_key is not None, "API key not provided."
         self.worker = PoeWorker(self.api_key)
         

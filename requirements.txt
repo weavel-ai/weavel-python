@@ -1,7 +1,8 @@
+httpx[http2]
 pydantic[email]>=2.4.2
+typer[all]
 pendulum
 requests
-typer[all]
 cryptography
 pyyaml
 InquirerPy
@@ -10,7 +11,6 @@ websockets==10.4
 termcolor
 watchdog
 readerwriterlock
-httpx[http2]
 pytest
 pytest-asyncio
 pytest-mock

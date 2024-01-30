@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="weavel",
-    version="0.0.5",
+    version="0.0.7",
     packages=find_namespace_packages(),
     entry_points={
     },
@@ -22,6 +22,8 @@ setup(
         "httpx[http2]",
         "pydantic>=2.4.2",
         "typer[all]",
+        "pendulum",
+        "requests",
         "cryptography",
         "pyyaml",
         "InquirerPy",
@@ -31,7 +33,8 @@ setup(
         "watchdog",
         "readerwriterlock",
         "pendulum",
-        "httpx[http2]"
+        "httpx[http2]",
+        "fastapi-poe",
     ],
     python_requires=">=3.8.10",
     keywords=[
