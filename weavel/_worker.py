@@ -14,7 +14,7 @@ from weavel.types import (
     WeavelRequest,
     StartTraceBody,
     SaveTraceDataBody,
-    SaveMetadataTraceBody
+    TrackUserBody
 )
 from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
@@ -22,24 +22,33 @@ from weavel._api_client import APIClient
 from weavel.utils import logger
 
 class Worker:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(Worker, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(
         self,
         api_key: str,
     ) -> None:
-        self.api_key = api_key
-        self.endpoint = BACKEND_SERVER_URL
-        
-        self.max_retry = 3
-        self.flush_interval = 60
-        self.flush_batch_size = 20
-        
-        self.api_client = APIClient()
-        
-        self.api_pool = ThreadPoolExecutor(max_workers=1)
-        self.buffer_storage = BufferStorage(max_buffer_size=1000)
-        self._running = True
-        self._thread = Thread(target=self.consume_buffer, daemon=True)
-        self._thread.start()
+        if not hasattr(self, 'is_initialized'):
+            self.api_key = api_key
+            self.endpoint = BACKEND_SERVER_URL
+            
+            self.max_retry = 3
+            self.flush_interval = 60
+            self.flush_batch_size = 20
+            
+            self.api_client = APIClient()
+            
+            self.api_pool = ThreadPoolExecutor(max_workers=1)
+            self.buffer_storage = BufferStorage(max_buffer_size=1000)
+            self._running = True
+            self._thread = Thread(target=self.consume_buffer, daemon=True)
+            self._thread.start()
+            self.is_initialized = True
         
     def _start_trace(self, trace_uuid: str, user_uuid: str, timestamp: Optional[datetime] = None, metadata: Optional[Dict[str, str]] = None) -> str:
         """Start the new trace for user_uuid.
@@ -55,21 +64,22 @@ class Worker:
                 "trace_uuid": trace_uuid,
                 "user_uuid": user_uuid,
                 "metadata": metadata,
-            }).model_dump()
+            })
         })
         self.buffer_storage.push(request)
         
         return trace_uuid
     
-    def _save_trace_metadata(self, trace_uuid: str, metadata: Dict[str, str]):
-        """Save the trace metadata."""
+    def _track_users(self, user_uuid: str, name: str, properties: Dict) -> None:
+        """Save the user event"""
         request = WeavelRequest(**{
-            "task": BackgroundTaskType.save_metadata_trace.value,
-            "body" : SaveMetadataTraceBody(**{
+            "task": BackgroundTaskType.track_user.value,
+            "body" : TrackUserBody(**{
                 "timestamp": str(datetime.now().isoformat()),
-                "trace_uuid": trace_uuid,
-                "metadata": metadata,
-            }).model_dump()
+                "user_uuid": user_uuid,
+                "event_name": name,
+                "properties": properties,
+            })
         })
         self.buffer_storage.push(request)
         
@@ -77,6 +87,7 @@ class Worker:
         
     def user_message(
         self,
+        user_uuid: str,
         trace_uuid: str,
         data_content: str,
         unit_name: Optional[str] = None,
@@ -96,18 +107,20 @@ class Worker:
             "task": BackgroundTaskType.log_trace_data.value,
             "body" : SaveTraceDataBody(**{
                 "timestamp": str(timestamp or datetime.now().isoformat()),
+                "user_uuid": user_uuid,
                 "trace_uuid": trace_uuid,
                 "data_type": DataType.user_message,
                 "data_content": data_content,
                 "unit_name": unit_name,
                 "metadata": metadata,
-            }).model_dump()
+            })
         })
         self.buffer_storage.push(request)
         return
     
     def assistant_message(
         self,
+        user_uuid: str,
         trace_uuid: str,
         data_content: str,
         unit_name: Optional[str] = None,
@@ -127,18 +140,20 @@ class Worker:
             "task": BackgroundTaskType.log_trace_data.value,
             "body" : SaveTraceDataBody(**{
                 "timestamp": str(timestamp or datetime.now().isoformat()),
+                "user_uuid": user_uuid,
                 "trace_uuid": trace_uuid,
                 "data_type": DataType.assistant_message,
                 "data_content": data_content,
                 "unit_name": unit_name,
                 "metadata": metadata,
-            }).model_dump()
+            })
         })
         self.buffer_storage.push(request)
         return
     
     def system_message(
         self,
+        user_uuid: str,
         trace_uuid: str,
         data_content: str,
         unit_name: Optional[str] = None,
@@ -158,18 +173,20 @@ class Worker:
             "task": BackgroundTaskType.log_trace_data.value,
             "body" : SaveTraceDataBody(**{
                 "timestamp": str(timestamp or datetime.now().isoformat()),
+                "user_uuid": user_uuid,
                 "trace_uuid": trace_uuid,
                 "data_type": DataType.system_message,
                 "data_content": data_content,
                 "unit_name": unit_name,
                 "metadata": metadata,
-            }).model_dump()
+            })
         })
         self.buffer_storage.push(request)
         return
     
     def inner_step(
         self,
+        user_uuid: str,
         trace_uuid: str,
         data_content: str,
         unit_name: Optional[str] = None,
@@ -189,12 +206,13 @@ class Worker:
             "task": BackgroundTaskType.log_trace_data.value,
             "body" : SaveTraceDataBody(**{
                 "timestamp": str(timestamp or datetime.now().isoformat()),
+                "user_uuid": user_uuid,
                 "trace_uuid": trace_uuid,
                 "data_type": DataType.inner_step,
                 "data_content": data_content,
                 "unit_name": unit_name,
                 "metadata": metadata,
-            }).model_dump()
+            })
         })
         self.buffer_storage.push(request)
         return
