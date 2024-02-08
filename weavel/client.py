@@ -87,6 +87,17 @@ class WeavelClient:
         trace = Trace(self._worker, user_uuid, trace_uuid)
         return trace
     
+    def resume_trace(
+        self,
+        user_uuid,
+        trace_uuid,
+    ) -> Trace:
+        """Resume the trace for (user_uuid, trace_uuid).
+        Method for make Trace object for existing trace.
+        """
+        
+        return Trace(self._worker, user_uuid, trace_uuid)
+    
     def track(
         self,
         user_uuid: str,
