@@ -14,7 +14,7 @@ from weavel.types import (
     WeavelRequest,
     StartTraceBody,
     SaveTraceDataBody,
-    TrackUserBody
+    SaveTrackEventBody
 )
 from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
@@ -73,11 +73,11 @@ class Worker:
     def _track_users(self, user_uuid: str, name: str, properties: Dict) -> None:
         """Save the user event"""
         request = WeavelRequest(**{
-            "task": BackgroundTaskType.track_user.value,
-            "body" : TrackUserBody(**{
+            "task": BackgroundTaskType.log_track_event.value,
+            "body" : SaveTrackEventBody(**{
                 "timestamp": str(datetime.now().isoformat()),
                 "user_uuid": user_uuid,
-                "event_name": name,
+                "track_event_name": name,
                 "properties": properties,
             })
         })

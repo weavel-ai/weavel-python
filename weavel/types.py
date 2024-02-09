@@ -31,9 +31,9 @@ class DataType(str, Enum):
 class BackgroundTaskType(str, Enum):
     start_trace = "start_trace"
     log_trace_data = "log_trace_data"
-    track_user = "track_user"
+    log_track_event = "log_track_event"
     # save_metadata_trace = "save_metadata_trace"
-    create_tags_trace_data = "create_tags_trace_data"
+    create_semantic_event = "create_semantic_event"
     
 class StartTraceBody(WeavelObject):
     """Start Trace body."""
@@ -43,11 +43,11 @@ class StartTraceBody(WeavelObject):
     timestamp: Optional[str] = None
     metadata: Optional[Dict[str, str]] = None
     
-class TrackUserBody(WeavelObject):
-    """Save metadata body."""
-    type: Literal['TrackUserBody'] = 'TrackUserBody'
+class SaveTrackEventBody(WeavelObject):
+    """Save track_event body."""
+    type: Literal['SaveTrackEventBody'] = 'SaveTrackEventBody'
     user_uuid: str
-    event_name: str
+    track_event_name: str
     properties: Dict[str, str]
     timestamp: Optional[str] = None
 
@@ -70,8 +70,8 @@ class SaveTraceDataBody(WeavelObject):
 class WeavelRequest(WeavelObject):
     """Weavel Request."""
     task: str
-    # body: Union[StartTraceBody, SaveTraceDataBody, SaveMetadataTraceBody, TrackUserBody]
-    body: Union[StartTraceBody, SaveTraceDataBody, TrackUserBody]
+    # body: Union[StartTraceBody, SaveTraceDataBody, SaveMetadataTraceBody, SaveTrackEventBody]
+    body: Union[StartTraceBody, SaveTraceDataBody, SaveTrackEventBody]
     
     @validator('task', pre=True)
     def validate_task(cls, v):
