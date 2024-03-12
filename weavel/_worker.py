@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import uuid
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Union
@@ -50,33 +49,33 @@ class Worker:
             self._thread.start()
             self.is_initialized = True
         
-    def _start_trace(self, trace_uuid: str, user_uuid: str, timestamp: Optional[datetime] = None, metadata: Optional[Dict[str, str]] = None) -> str:
-        """Start the new trace for user_uuid.
+    def _start_trace(self, trace_id: str, user_id: str, timestamp: Optional[datetime] = None, metadata: Optional[Dict[str, str]] = None) -> str:
+        """Start the new trace for user_id.
         
         Returns:
-            The trace UUID.
+            The trace id.
         """
         # add task to buffer
         request = WeavelRequest(**{
             "task": BackgroundTaskType.start_trace.value,
             "body" : StartTraceBody(**{
                 "timestamp": str(timestamp or datetime.now().isoformat()),
-                "trace_uuid": trace_uuid,
-                "user_uuid": user_uuid,
+                "trace_id": trace_id,
+                "user_id": user_id,
                 "metadata": metadata,
             })
         })
         self.buffer_storage.push(request)
         
-        return trace_uuid
+        return trace_id
     
-    def _track_users(self, user_uuid: str, name: str, properties: Dict) -> None:
+    def _track_users(self, user_id: str, name: str, properties: Dict) -> None:
         """Save the user event"""
         request = WeavelRequest(**{
             "task": BackgroundTaskType.log_track_event.value,
             "body" : SaveTrackEventBody(**{
                 "timestamp": str(datetime.now().isoformat()),
-                "user_uuid": user_uuid,
+                "user_id": user_id,
                 "track_event_name": name,
                 "properties": properties,
             })
@@ -87,8 +86,8 @@ class Worker:
         
     def user_message(
         self,
-        user_uuid: str,
-        trace_uuid: str,
+        user_id: str,
+        trace_id: str,
         data_content: str,
         unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
@@ -97,7 +96,7 @@ class Worker:
         """Log the "user_message" type data to the trace.
         
         Args:
-            trace_uuid: The trace UUID.
+            trace_id: The trace identifier.
             data_content: The data content.
             unit_name: The unit name.
             timestamp: The timestamp.
@@ -107,8 +106,8 @@ class Worker:
             "task": BackgroundTaskType.log_trace_data.value,
             "body" : SaveTraceDataBody(**{
                 "timestamp": str(timestamp or datetime.now().isoformat()),
-                "user_uuid": user_uuid,
-                "trace_uuid": trace_uuid,
+                "user_id": user_id,
+                "trace_id": trace_id,
                 "data_type": DataType.user_message,
                 "data_content": data_content,
                 "unit_name": unit_name,
@@ -120,8 +119,8 @@ class Worker:
     
     def assistant_message(
         self,
-        user_uuid: str,
-        trace_uuid: str,
+        user_id: str,
+        trace_id: str,
         data_content: str,
         unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
@@ -130,7 +129,7 @@ class Worker:
         """Log the "llm_background_message" type data to the trace.
         
         Args:
-            trace_uuid: The trace UUID.
+            trace_id: The trace identifier.
             data_content: The data content.
             unit_name: The unit name.
             timestamp: The timestamp.
@@ -140,8 +139,8 @@ class Worker:
             "task": BackgroundTaskType.log_trace_data.value,
             "body" : SaveTraceDataBody(**{
                 "timestamp": str(timestamp or datetime.now().isoformat()),
-                "user_uuid": user_uuid,
-                "trace_uuid": trace_uuid,
+                "user_id": user_id,
+                "trace_id": trace_id,
                 "data_type": DataType.assistant_message,
                 "data_content": data_content,
                 "unit_name": unit_name,
@@ -153,8 +152,8 @@ class Worker:
     
     def system_message(
         self,
-        user_uuid: str,
-        trace_uuid: str,
+        user_id: str,
+        trace_id: str,
         data_content: str,
         unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
@@ -163,7 +162,7 @@ class Worker:
         """Log the "system_message" type data to the trace.
         
         Args:
-            trace_uuid: The trace UUID.
+            trace_id: The trace identifier.
             data_content: The data content.
             unit_name: The unit name.
             timestamp: The timestamp.
@@ -173,8 +172,8 @@ class Worker:
             "task": BackgroundTaskType.log_trace_data.value,
             "body" : SaveTraceDataBody(**{
                 "timestamp": str(timestamp or datetime.now().isoformat()),
-                "user_uuid": user_uuid,
-                "trace_uuid": trace_uuid,
+                "user_id": user_id,
+                "trace_id": trace_id,
                 "data_type": DataType.system_message,
                 "data_content": data_content,
                 "unit_name": unit_name,
@@ -186,8 +185,8 @@ class Worker:
     
     def inner_step(
         self,
-        user_uuid: str,
-        trace_uuid: str,
+        user_id: str,
+        trace_id: str,
         data_content: str,
         unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
@@ -196,7 +195,7 @@ class Worker:
         """Log the "inner_step" type data to the trace.
         
         Args:
-            trace_uuid: The trace UUID.
+            trace_id: The trace identifier.
             data_content: The data content.
             unit_name: The unit name.
             timestamp: The timestamp.
@@ -206,8 +205,8 @@ class Worker:
             "task": BackgroundTaskType.log_trace_data.value,
             "body" : SaveTraceDataBody(**{
                 "timestamp": str(timestamp or datetime.now().isoformat()),
-                "user_uuid": user_uuid,
-                "trace_uuid": trace_uuid,
+                "user_id": user_id,
+                "trace_id": trace_id,
                 "data_type": DataType.inner_step,
                 "data_content": data_content,
                 "unit_name": unit_name,

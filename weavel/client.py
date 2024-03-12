@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 
@@ -17,12 +16,12 @@ class Trace:
     def __init__(
         self,
         worker: Worker,
-        user_uuid: str,
-        trace_uuid: str,
+        user_id: str,
+        trace_id: str,
     ):
         self.worker = worker
-        self.user_uuid = user_uuid
-        self.trace_uuid = trace_uuid
+        self.user_id = user_id
+        self.trace_id = trace_id
     
     def log_message(
         self,
@@ -33,11 +32,11 @@ class Trace:
         metadata: Optional[Dict[str, str]] = None
     ):
         if type == "user":
-            self.worker.user_message(self.user_uuid, self.trace_uuid, content, unit_name, timestamp, metadata)
+            self.worker.user_message(self.user_id, self.trace_id, content, unit_name, timestamp, metadata)
         elif type == "assistant":
-            self.worker.assistant_message(self.user_uuid, self.trace_uuid, content, unit_name, timestamp, metadata)
+            self.worker.assistant_message(self.user_id, self.trace_id, content, unit_name, timestamp, metadata)
         elif type == "system":
-            self.worker.system_message(self.user_uuid, self.trace_uuid, content, unit_name, timestamp, metadata)
+            self.worker.system_message(self.user_id, self.trace_id, content, unit_name, timestamp, metadata)
         else:
             raise ValueError("Invalid message type.")
     
@@ -48,7 +47,7 @@ class Trace:
         unit_name: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None
     ):
-        self.worker.inner_step(self.user_uuid, self.trace_uuid, content, unit_name, timestamp, metadata)
+        self.worker.inner_step(self.user_id, self.trace_id, content, unit_name, timestamp, metadata)
             
 class WeavelClient:
     def __init__(
@@ -59,52 +58,53 @@ class WeavelClient:
         assert self.api_key is not None, "API key not provided."
         self._worker = Worker(self.api_key)
 
-    def create_user_uuid(
-        self,
-    ) -> str:
-        """Create a new user_uuid.
+    # def create_user_id(
+    #     self,
+    # ) -> str:
+    #     """Create a new user_id.
         
-        Returns:
-            The user UUID.
-        """
-        return str(uuid.uuid4())
+    #     Returns:
+    #         The user identifier.
+    #     """
+    #     return str(uuid.uuid4())
     
     def start_trace(
         self,
-        user_uuid: str,
+        user_id: str,
+        trace_id: str,
         timestamp: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
     ) -> Trace:
-        """Start the new trace for user_uuid.
+        """Start the new trace for user_id.
         
         Args:
-            user_uuid: The user's UUID.
+            user_id: The user's identifier.
+            trace_id: The trace identifier.
         Returns:
-            The trace UUID.
+            The trace instance.
         """
-        trace_uuid = str(uuid.uuid4())
-        self._worker._start_trace(trace_uuid, user_uuid, timestamp, metadata)
-        trace = Trace(self._worker, user_uuid, trace_uuid)
+        self._worker._start_trace(trace_id, user_id, timestamp, metadata)
+        trace = Trace(self._worker, user_id, trace_id)
         return trace
     
     def resume_trace(
         self,
-        user_uuid,
-        trace_uuid,
+        user_id,
+        trace_id,
     ) -> Trace:
-        """Resume the trace for (user_uuid, trace_uuid).
+        """Resume the trace for (user_id, trace_id).
         Method for make Trace object for existing trace.
         """
         
-        return Trace(self._worker, user_uuid, trace_uuid)
+        return Trace(self._worker, user_id, trace_id)
     
     def track(
         self,
-        user_uuid: str,
+        user_id: str,
         event_name: str,
         properties: Dict
     ):
-        self._worker._track_users(user_uuid, event_name, properties)
+        self._worker._track_users(user_id, event_name, properties)
     
     def close(
         self

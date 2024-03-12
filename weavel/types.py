@@ -38,15 +38,15 @@ class BackgroundTaskType(str, Enum):
 class StartTraceBody(WeavelObject):
     """Start Trace body."""
     type: Literal['StartTraceBody'] = 'StartTraceBody'
-    user_uuid: str
-    trace_uuid: str
+    user_id: str
+    trace_id: str
     timestamp: Optional[str] = None
     metadata: Optional[Dict[str, str]] = None
     
 class SaveTrackEventBody(WeavelObject):
     """Save track_event body."""
     type: Literal['SaveTrackEventBody'] = 'SaveTrackEventBody'
-    user_uuid: str
+    user_id: str
     track_event_name: str
     properties: Dict[str, str]
     timestamp: Optional[str] = None
@@ -54,8 +54,8 @@ class SaveTrackEventBody(WeavelObject):
 class SaveTraceDataBody(WeavelObject):
     """Log body."""
     type: Literal['SaveTraceDataBody'] = 'SaveTraceDataBody'
-    user_uuid: str
-    trace_uuid: str
+    user_id: str
+    trace_id: str
     data_type: str
     data_content: str
     timestamp: Optional[str] = None
@@ -64,7 +64,7 @@ class SaveTraceDataBody(WeavelObject):
     
 # class SaveMetadataTraceBody(WeavelObject):
 #     """Save metadata body."""
-#     trace_uuid: str
+#     trace_id: str
 #     metadata: Dict[str, str]
 
 class WeavelRequest(WeavelObject):
