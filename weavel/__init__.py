@@ -3,4 +3,4 @@ from .types import *
 from .utils import *
 from .poe import *
 
-__version___ = "0.1.2"
+__version___ = "0.2.0"
