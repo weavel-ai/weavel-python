@@ -241,7 +241,7 @@ class Worker:
                 response = self.api_client.execute(
                     self.api_key,
                     self.endpoint,
-                    "/trace/batch",
+                    "/batch",
                     method="POST",
                     json={"requests": [request.model_dump() for request in requests]},
                     timeout=10,

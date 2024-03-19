@@ -75,7 +75,7 @@ class PoeWorker:
                 response = self.api_client.execute(
                     self.api_key,
                     self.endpoint,
-                    "/poe/trace/batch",
+                    "/poe/batch",
                     method="POST",
                     json={"requests": [request.model_dump() for request in requests]},
                     timeout=10,
