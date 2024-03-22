@@ -49,7 +49,7 @@ class PoeWorker:
                 message_id=user_request.message_id,
                 role="user",
                 data_type="user_message",
-                data_content=user_request.query[-1].content,
+                content=user_request.query[-1].content,
                 timestamp=datetime.fromtimestamp(user_request.query[-1].timestamp / 1e6, timezone.utc).isoformat(),
             ),
         )
@@ -61,7 +61,7 @@ class PoeWorker:
                 user_id=user_request.user_id,
                 role="assistant",
                 data_type="assistant_message",
-                data_content=bot_response,
+                content=bot_response,
                 timestamp=response_timestamp,
             ),
         )

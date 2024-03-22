@@ -8,12 +8,11 @@ from threading import Thread
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from weavel.types import (
-    DataType,
+    TraceDataRole,
     BackgroundTaskType,
-    WeavelRequest,
-    StartTraceBody,
-    SaveTraceDataBody,
-    SaveTrackEventBody
+    OpenTraceBody,
+    CaptureTraceDataBody,
+    CaptureActionEventBody,
 )
 from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
@@ -49,37 +48,32 @@ class Worker:
             self._thread.start()
             self.is_initialized = True
         
-    def _start_trace(self, trace_id: str, user_id: str, timestamp: Optional[datetime] = None, metadata: Optional[Dict[str, str]] = None) -> str:
+    def _open_trace(self, trace_id: str, user_id: str, timestamp: Optional[datetime] = None, metadata: Optional[Dict[str, str]] = None) -> str:
         """Start the new trace for user_id.
         
         Returns:
             The trace id.
         """
         # add task to buffer
-        request = WeavelRequest(**{
-            "task": BackgroundTaskType.start_trace.value,
-            "body" : StartTraceBody(**{
-                "timestamp": str(timestamp or datetime.now().isoformat()),
-                "trace_id": trace_id,
-                "user_id": user_id,
-                "metadata": metadata,
-            })
-        })
+        request = OpenTraceBody(
+            user_id=user_id,
+            trace_id=trace_id,
+            timestamp=str(timestamp or datetime.now().isoformat()),
+            metadata=metadata,
+        )
+
         self.buffer_storage.push(request)
         
         return trace_id
     
     def _track_users(self, user_id: str, name: str, properties: Dict) -> None:
         """Save the user event"""
-        request = WeavelRequest(**{
-            "task": BackgroundTaskType.log_track_event.value,
-            "body" : SaveTrackEventBody(**{
-                "timestamp": str(datetime.now().isoformat()),
-                "user_id": user_id,
-                "track_event_name": name,
-                "properties": properties,
-            })
-        })
+        request = CaptureActionEventBody(
+            user_id=user_id,
+            action_event_name=name,
+            properties=properties,
+            timestamp=str(datetime.now().isoformat()),
+        )
         self.buffer_storage.push(request)
         
         return
@@ -88,7 +82,7 @@ class Worker:
         self,
         user_id: str,
         trace_id: str,
-        data_content: str,
+        content: str,
         unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None, 
@@ -97,23 +91,20 @@ class Worker:
         
         Args:
             trace_id: The trace identifier.
-            data_content: The data content.
+            content: The data content.
             unit_name: The unit name.
             timestamp: The timestamp.
             metadata: The metadata.
         """
-        request = WeavelRequest(**{
-            "task": BackgroundTaskType.log_trace_data.value,
-            "body" : SaveTraceDataBody(**{
-                "timestamp": str(timestamp or datetime.now().isoformat()),
-                "user_id": user_id,
-                "trace_id": trace_id,
-                "data_type": DataType.user_message,
-                "data_content": data_content,
-                "unit_name": unit_name,
-                "metadata": metadata,
-            })
-        })
+        request = CaptureTraceDataBody(
+            user_id=user_id,
+            trace_id=trace_id,
+            role=TraceDataRole.user,
+            content=content,
+            unit_name=unit_name,
+            metadata=metadata,
+            timestamp=str(timestamp or datetime.now().isoformat()),
+        )
         self.buffer_storage.push(request)
         return
     
@@ -121,7 +112,7 @@ class Worker:
         self,
         user_id: str,
         trace_id: str,
-        data_content: str,
+        content: str,
         unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -130,23 +121,20 @@ class Worker:
         
         Args:
             trace_id: The trace identifier.
-            data_content: The data content.
+            content: The data content.
             unit_name: The unit name.
             timestamp: The timestamp.
             metadata: The metadata.
         """
-        request = WeavelRequest(**{
-            "task": BackgroundTaskType.log_trace_data.value,
-            "body" : SaveTraceDataBody(**{
-                "timestamp": str(timestamp or datetime.now().isoformat()),
-                "user_id": user_id,
-                "trace_id": trace_id,
-                "data_type": DataType.assistant_message,
-                "data_content": data_content,
-                "unit_name": unit_name,
-                "metadata": metadata,
-            })
-        })
+        request = CaptureTraceDataBody(
+            user_id=user_id,
+            trace_id=trace_id,
+            role=TraceDataRole.assisatant,
+            content=content,
+            unit_name=unit_name,
+            metadata=metadata,
+            timestamp=str(timestamp or datetime.now().isoformat()),
+        )
         self.buffer_storage.push(request)
         return
     
@@ -154,7 +142,7 @@ class Worker:
         self,
         user_id: str,
         trace_id: str,
-        data_content: str,
+        content: str,
         unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -163,23 +151,21 @@ class Worker:
         
         Args:
             trace_id: The trace identifier.
-            data_content: The data content.
+            content: The data content.
             unit_name: The unit name.
             timestamp: The timestamp.
             metadata: The metadata.
         """
-        request = WeavelRequest(**{
-            "task": BackgroundTaskType.log_trace_data.value,
-            "body" : SaveTraceDataBody(**{
-                "timestamp": str(timestamp or datetime.now().isoformat()),
-                "user_id": user_id,
-                "trace_id": trace_id,
-                "data_type": DataType.system_message,
-                "data_content": data_content,
-                "unit_name": unit_name,
-                "metadata": metadata,
-            })
-        })
+        request = CaptureTraceDataBody(
+            user_id=user_id,
+            trace_id=trace_id,
+            role=TraceDataRole.system,
+            content=content,
+            unit_name=unit_name,
+            metadata=metadata,
+            timestamp=str(timestamp or datetime.now().isoformat()),
+        )
+
         self.buffer_storage.push(request)
         return
     
@@ -187,7 +173,7 @@ class Worker:
         self,
         user_id: str,
         trace_id: str,
-        data_content: str,
+        content: str,
         unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -196,54 +182,34 @@ class Worker:
         
         Args:
             trace_id: The trace identifier.
-            data_content: The data content.
+            content: The data content.
             unit_name: The unit name.
             timestamp: The timestamp.
             metadata: The metadata.
         """
-        request = WeavelRequest(**{
-            "task": BackgroundTaskType.log_trace_data.value,
-            "body" : SaveTraceDataBody(**{
-                "timestamp": str(timestamp or datetime.now().isoformat()),
-                "user_id": user_id,
-                "trace_id": trace_id,
-                "data_type": DataType.inner_step,
-                "data_content": data_content,
-                "unit_name": unit_name,
-                "metadata": metadata,
-            })
-        })
+        request = CaptureTraceDataBody(
+            user_id=user_id,
+            trace_id=trace_id,
+            role=TraceDataRole.inner_step,
+            content=content,
+            unit_name=unit_name,
+            metadata=metadata,
+            timestamp=str(timestamp or datetime.now().isoformat()),
+        )
         self.buffer_storage.push(request)
         return
-    
-    def send_request(self, request: WeavelRequest):
-        for attempt in range(self.max_retry):
-            try:
-                response = self.api_client.execute(
-                    self.api_key,
-                    self.endpoint,
-                    "/trace",
-                    method="POST",
-                    json=request.model_dump(),
-                    timeout=10,
-                )
-                if response.status_code == 200:
-                    return
-            except Exception as e:
-                print(e)
-                time.sleep(2**attempt)
-                continue
             
-    def send_requests(self, requests: List[WeavelRequest]):
-        logger.info(requests)
+    def send_requests(self, requests: List[Union[OpenTraceBody, CaptureActionEventBody, CaptureTraceDataBody]]):
+        # logger.info(requests)
         for attempt in range(self.max_retry):
+            logger.info(requests)
             try:
                 response = self.api_client.execute(
                     self.api_key,
                     self.endpoint,
                     "/batch",
                     method="POST",
-                    json={"requests": [request.model_dump() for request in requests]},
+                    json={"batch": [request.model_dump() for request in requests]},
                     timeout=10,
                 )
                 if response.status_code == 200:

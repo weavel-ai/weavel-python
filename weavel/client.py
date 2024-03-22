@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Union
 import pendulum
 from dotenv import load_dotenv
 
-from weavel.types import DataType
+from weavel.types import TraceDataRole
 from weavel._worker import Worker
 
 load_dotenv()
@@ -68,7 +68,7 @@ class WeavelClient:
     #     """
     #     return str(uuid.uuid4())
     
-    def start_trace(
+    def open_trace(
         self,
         user_id: str,
         trace_id: str,
@@ -83,7 +83,7 @@ class WeavelClient:
         Returns:
             The trace instance.
         """
-        self._worker._start_trace(trace_id, user_id, timestamp, metadata)
+        self._worker._open_trace(trace_id, user_id, timestamp, metadata)
         trace = Trace(self._worker, user_id, trace_id)
         return trace
     
@@ -104,6 +104,13 @@ class WeavelClient:
         event_name: str,
         properties: Dict
     ):
+        """Track the user's action event like "paid", "subscribed", "unsubscribed", etc.
+
+        Args:
+            user_id (str): identifier of the user
+            event_name (str): name of the action event.
+            properties (Dict): properties of the action event.
+        """
         self._worker._track_users(user_id, event_name, properties)
     
     def close(

@@ -21,63 +21,59 @@ class WeavelObject(BaseModel):
         super().__init__(**data)
         
         
-class DataType(str, Enum):
-    system_message = "system_message"
-    user_message = "user_message"
-    assistant_message = "assistant_message"
+class TraceDataRole(str, Enum):
+    system = "system"
+    user = "user"
+    assisatant = "assistant"
     inner_step = "inner_step"
     # retrieved_content = "retrieved_content"
 
 class BackgroundTaskType(str, Enum):
-    start_trace = "start_trace"
-    log_trace_data = "log_trace_data"
-    log_track_event = "log_track_event"
-    # save_metadata_trace = "save_metadata_trace"
+    open_trace = "open_trace"
+    capture_trace_data = "capture_trace_data"
+    capture_action_event = "capture_action_event"
     create_semantic_event = "create_semantic_event"
+    extract_keywords = "extract_keywords"
     
-class StartTraceBody(WeavelObject):
+class OpenTraceBody(WeavelObject):
     """Start Trace body."""
-    type: Literal['StartTraceBody'] = 'StartTraceBody'
+    type: Literal["open_trace"] = "open_trace"
     user_id: str
     trace_id: str
     timestamp: Optional[str] = None
     metadata: Optional[Dict[str, str]] = None
-    
-class SaveTrackEventBody(WeavelObject):
-    """Save track_event body."""
-    type: Literal['SaveTrackEventBody'] = 'SaveTrackEventBody'
-    user_id: str
-    track_event_name: str
-    properties: Dict[str, str]
-    timestamp: Optional[str] = None
 
-class SaveTraceDataBody(WeavelObject):
-    """Log body."""
-    type: Literal['SaveTraceDataBody'] = 'SaveTraceDataBody'
+class CaptureActionEventBody(WeavelObject):
+    """Capture action_event body."""
+
+    type: Literal["capture_action_event"] = "capture_action_event"
+    user_id: str
+    action_event_name: str
+    properties: Dict[str, Any]
+    timestamp: Optional[str] = None
+    
+class CaptureTraceDataBody(WeavelObject):
+    """Capture Trace Data body."""
+
+    type: Literal["capture_trace_data"] = "capture_trace_data"
     user_id: str
     trace_id: str
-    data_type: str
-    data_content: str
-    timestamp: Optional[str] = None
+    role: str
+    content: str
     unit_name: Optional[str] = None
-    metadata: Optional[Dict[str, str]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    timestamp: Optional[str] = None
     
 # class SaveMetadataTraceBody(WeavelObject):
 #     """Save metadata body."""
 #     trace_id: str
 #     metadata: Dict[str, str]
 
-class WeavelRequest(WeavelObject):
-    """Weavel Request."""
-    task: str
-    # body: Union[StartTraceBody, SaveTraceDataBody, SaveMetadataTraceBody, SaveTrackEventBody]
-    body: Union[StartTraceBody, SaveTraceDataBody, SaveTrackEventBody]
-    
-    @validator('task', pre=True)
-    def validate_task(cls, v):
-        if v not in BackgroundTaskType.__members__:
-            raise ValueError(f"Invalid task type: {v}. Must be one of {list(BackgroundTaskType.__members__.keys())}")
-        return v
-    
 class BatchRequest(WeavelObject):
-    requests: list[WeavelRequest]
+    batch: List[
+        Union[
+            OpenTraceBody,
+            CaptureActionEventBody,
+            CaptureTraceDataBody
+        ]
+    ]

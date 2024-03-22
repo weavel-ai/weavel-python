@@ -13,7 +13,7 @@ class PoeSaveTraceDataBody(WeavelObject):
     message_id: Optional[str] = None
     role: str
     data_type: str
-    data_content: str
+    content: str
     timestamp: Optional[str] = None
 
 class PoeRequest(WeavelObject):
