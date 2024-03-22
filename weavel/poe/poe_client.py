@@ -9,7 +9,7 @@ import pendulum
 from dotenv import load_dotenv
 from fastapi_poe import QueryRequest, PartialResponse
 
-from weavel.types import DataType
+from weavel.types import TraceDataRole
 from weavel.poe._poe_worker import PoeWorker
 
 load_dotenv()

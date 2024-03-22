@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="weavel",
-    version="0.2.0",
+    version="0.3.0",
     packages=find_namespace_packages(),
     entry_points={
     },
