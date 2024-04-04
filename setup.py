@@ -1,6 +1,7 @@
 """
 Weavel, natural language analysis Dashboard for LLM Agent
 """
+
 from setuptools import setup, find_namespace_packages
 
 # Read README.md for the long description
@@ -9,10 +10,9 @@ with open("README.md", "r") as fh:
 
 setup(
     name="weavel",
-    version="0.3.0",
+    version="0.4.0",
     packages=find_namespace_packages(),
-    entry_points={
-    },
+    entry_points={},
     description="Weavel, natural language analysis Dashboard for LLM Agent",
     long_description=long_description,
     long_description_content_type="text/markdown",
