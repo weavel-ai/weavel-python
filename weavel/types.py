@@ -40,6 +40,7 @@ class BackgroundTaskType(str, Enum):
     capture_track_event = "capture_track_event"
     create_semantic_event = "create_semantic_event"
     extract_keywords = "extract_keywords"
+    save_user_identity = "save_user_identity"
 
 
 class OpenTraceBody(WeavelObject):
@@ -74,6 +75,12 @@ class CaptureTraceDataBody(WeavelObject):
     metadata: Optional[Dict[str, Any]] = None
     timestamp: Optional[str] = None
 
+class SaveUserIdentityBody(WeavelObject):
+    """Save user identity body."""
+    type: Literal["save_user_identity"] = "save_user_identity"
+    user_id: str
+    properties: Dict[str, Any]
+    timestamp: Optional[str] = None
 
 # class SaveMetadataTraceBody(WeavelObject):
 #     """Save metadata body."""

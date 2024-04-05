@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Dict, Literal, Optional
+from typing import Dict, Literal, Optional, Any
 
 from dotenv import load_dotenv
 
@@ -153,6 +153,16 @@ class WeavelClient:
 
         """
         self._worker.log_track_event(user_id, event_name, properties)
+        
+    def identify(self, user_id: str, properties: Dict[str, Any]):
+        """Identify a user with the specified properties.
+        
+        You can save any user information you know about a user for user_id, such as their email, name, or phone number in dict format.
+        Properties will be updated for every call.
+        """
+        
+        self._worker.identify_user(user_id, properties)
+        
 
     def close(self):
         """Close the client connection."""

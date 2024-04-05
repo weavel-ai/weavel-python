@@ -12,6 +12,7 @@ from weavel.types import (
     OpenTraceBody,
     CaptureTraceDataBody,
     CaptureTrackEventBody,
+    SaveUserIdentityBody
 )
 from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
@@ -71,6 +72,26 @@ class Worker:
         self.buffer_storage.push(request)
 
         return trace_id
+    
+    def identify_user(self, user_id: str, properties: Dict) -> None:
+        """
+        Identifies a user with the given properties.
+
+        Args:
+            user_id (str): The ID of the user.
+            properties (Dict): The properties associated with the user.
+
+        Returns:
+            None
+        """
+        request = SaveUserIdentityBody(
+            user_id=user_id,
+            properties=properties,
+            timestamp=str(datetime.now().isoformat()),
+        )
+        self.buffer_storage.push(request)
+
+        return
 
     def log_track_event(self, user_id: str, name: str, properties: Dict) -> None:
         """
