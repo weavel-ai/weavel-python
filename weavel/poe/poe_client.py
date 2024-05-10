@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Union
 
 import pendulum
@@ -27,7 +27,7 @@ class WeavelPoeClient:
         self,
         user_request: QueryRequest,
         bot_responses: List[PartialResponse],
-        response_timestamp: Optional[datetime] = datetime.now().isoformat(),
+        response_timestamp: Optional[datetime] = datetime.now(timezone.utc).isoformat(),
     ):
         self.worker.log(user_request, bot_responses, response_timestamp)
         return

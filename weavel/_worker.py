@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 from typing import Dict, List, Optional, Union
 from threading import Thread
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -61,11 +61,16 @@ class Worker:
         Returns:
             The trace id.
         """
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
+            timestamp = timestamp.astimezone(timezone.utc)
+
         # add task to buffer
         request = OpenTraceBody(
             user_id=user_id,
             trace_id=trace_id,
-            timestamp=str(timestamp or datetime.now().isoformat()),
+            timestamp=timestamp.isoformat(),
             metadata=metadata,
         )
 
@@ -87,7 +92,7 @@ class Worker:
         request = SaveUserIdentityBody(
             user_id=user_id,
             properties=properties,
-            timestamp=str(datetime.now().isoformat()),
+            timestamp=str(datetime.now(timezone.utc).isoformat()),
         )
         self.buffer_storage.push(request)
 
@@ -109,7 +114,7 @@ class Worker:
             user_id=user_id,
             track_event_name=name,
             properties=properties,
-            timestamp=str(datetime.now().isoformat()),
+            timestamp=str(datetime.now(timezone.utc).isoformat()),
         )
         self.buffer_storage.push(request)
 
@@ -133,6 +138,11 @@ class Worker:
             timestamp: The timestamp.
             metadata: The metadata.
         """
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
+            timestamp = timestamp.astimezone(timezone.utc)
+            
         request = CaptureTraceDataBody(
             user_id=user_id,
             trace_id=trace_id,
@@ -140,7 +150,7 @@ class Worker:
             content=content,
             unit_name=unit_name,
             metadata=metadata,
-            timestamp=str(timestamp or datetime.now().isoformat()),
+            timestamp=timestamp.isoformat(),
         )
         self.buffer_storage.push(request)
         return
@@ -163,6 +173,11 @@ class Worker:
             timestamp: The timestamp.
             metadata: The metadata.
         """
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
+            timestamp = timestamp.astimezone(timezone.utc)
+            
         request = CaptureTraceDataBody(
             user_id=user_id,
             trace_id=trace_id,
@@ -170,7 +185,7 @@ class Worker:
             content=content,
             unit_name=unit_name,
             metadata=metadata,
-            timestamp=str(timestamp or datetime.now().isoformat()),
+            timestamp=timestamp.isoformat(),
         )
         self.buffer_storage.push(request)
         return
@@ -193,6 +208,11 @@ class Worker:
             timestamp: The timestamp.
             metadata: The metadata.
         """
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
+            timestamp = timestamp.astimezone(timezone.utc)
+            
         request = CaptureTraceDataBody(
             user_id=user_id,
             trace_id=trace_id,
@@ -200,7 +220,7 @@ class Worker:
             content=content,
             unit_name=unit_name,
             metadata=metadata,
-            timestamp=str(timestamp or datetime.now().isoformat()),
+            timestamp=timestamp.isoformat(),
         )
         self.buffer_storage.push(request)
         return

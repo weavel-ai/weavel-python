@@ -39,7 +39,7 @@ class PoeWorker:
         self,
         user_request: QueryRequest,
         bot_responses: List[PartialResponse],
-        response_timestamp: Optional[datetime] = datetime.now().isoformat(),
+        response_timestamp: Optional[datetime] = datetime.now(timezone.utc).isoformat(),
     ):
         pass
         user_log = PoeRequest(
