@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import UTC, datetime, timezone
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Union
 from threading import Thread
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -98,7 +98,7 @@ class Worker:
 
         return
 
-    def log_track_event(self, user_id: str, name: str, properties: Dict) -> None:
+    def log_track_event(self, user_id: str, name: str, properties: Dict, trace_id: Optional[str]) -> None:
         """
         Logs a track event for a user.
 
@@ -106,6 +106,7 @@ class Worker:
             user_id (str): The ID of the user.
             name (str): The name of the track event.
             properties (Dict): Additional properties associated with the track event.
+            trace_id (Optional[str]): The ID of the trace associated with the track event.
 
         Returns:
             None
@@ -115,6 +116,7 @@ class Worker:
             track_event_name=name,
             properties=properties,
             timestamp=str(datetime.now(timezone.utc).isoformat()),
+            trace_id=trace_id,
         )
         self.buffer_storage.push(request)
 

@@ -141,7 +141,7 @@ class WeavelClient:
         """
         return Trace(self._worker, user_id, trace_id)
 
-    def track(self, user_id: str, event_name: str, properties: Dict):
+    def track(self, user_id: str, event_name: str, properties: Dict, trace_id: Optional[str] = None):
         """Track a user's track event.
 
         This method is used to track user actions such as "paid", "subscribed", "unsubscribed", etc.
@@ -150,9 +150,10 @@ class WeavelClient:
             user_id (str): The identifier of the user.
             event_name (str): The name of the track event.
             properties (Dict): The properties of the track event.
+            trace_id (str, optional): The ID of the trace associated with the track event.
 
         """
-        self._worker.log_track_event(user_id, event_name, properties)
+        self._worker.log_track_event(user_id, event_name, properties, trace_id)
         
     def identify(self, user_id: str, properties: Dict[str, Any]):
         """Identify a user with the specified properties.

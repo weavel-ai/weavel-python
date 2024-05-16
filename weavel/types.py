@@ -61,6 +61,7 @@ class CaptureTrackEventBody(WeavelObject):
     track_event_name: str
     properties: Dict[str, Any]
     timestamp: Optional[str] = None
+    trace_id: Optional[str] = None
 
 
 class CaptureTraceDataBody(WeavelObject):
