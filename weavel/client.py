@@ -28,6 +28,7 @@ class Trace:
         type: Literal["user", "assistant"],
         content: str,
         timestamp: Optional[datetime] = None,
+        trace_data_id: Optional[str] = None,
         unit_name: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
     ):
@@ -38,6 +39,7 @@ class Trace:
             type (Literal["user", "assistant"]): The type of the message. Must be either "user" or "assistant".
             content (str): The content of the message.
             timestamp (Optional[datetime], optional): The timestamp of the message. Defaults to None.
+            trace_data_id (Optional[str], optional): The trace data ID associated with the message. Defaults to None.
             unit_name (Optional[str], optional): The unit name associated with the message. Defaults to None.
             metadata (Optional[Dict[str, str]], optional): Additional metadata for the message. Defaults to None.
 
@@ -46,11 +48,11 @@ class Trace:
         """
         if type == "user":
             self.worker.log_user_message(
-                self.user_id, self.trace_id, content, unit_name, timestamp, metadata
+                self.user_id, self.trace_id, content, timestamp, trace_data_id, unit_name, metadata
             )
         elif type == "assistant":
             self.worker.log_assistant_message(
-                self.user_id, self.trace_id, content, unit_name, timestamp, metadata
+                self.user_id, self.trace_id, content, timestamp, trace_data_id, unit_name, metadata
             )
         else:
             raise ValueError("Invalid message type.")
@@ -59,6 +61,7 @@ class Trace:
         self,
         content: str,
         timestamp: Optional[datetime] = None,
+        trace_data_id: Optional[str] = None,
         unit_name: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
     ):
@@ -68,11 +71,12 @@ class Trace:
         Args:
             content (str): The content of the inner step.
             timestamp (Optional[datetime], optional): The timestamp of the inner step. Defaults to None.
+            trace_data_id (Optional[str], optional): The trace data ID of the inner step. Defaults to None.
             unit_name (Optional[str], optional): The unit name of the inner step. Defaults to None.
             metadata (Optional[Dict[str, str]], optional): Additional metadata for the inner step. Defaults to None.
         """
         self.worker.log_inner_step(
-            self.user_id, self.trace_id, content, unit_name, timestamp, metadata
+            self.user_id, self.trace_id, content, timestamp, trace_data_id, unit_name, metadata
         )
 
 
@@ -154,6 +158,10 @@ class WeavelClient:
 
         """
         self._worker.log_track_event(user_id, event_name, properties, trace_id)
+        
+    def log_message_metadata(self, trace_data_id: str, metadata: Dict[str, str], timestamp: Optional[datetime] = None):
+        """Add metadata to a message."""
+        self._worker.log_message_metadata(trace_data_id, metadata, timestamp)
         
     def identify(self, user_id: str, properties: Dict[str, Any]):
         """Identify a user with the specified properties.

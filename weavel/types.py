@@ -33,16 +33,6 @@ class TraceDataRole(str, Enum):
     inner_step = "inner_step"
     # retrieved_content = "retrieved_content"
 
-
-class BackgroundTaskType(str, Enum):
-    open_trace = "open_trace"
-    capture_trace_data = "capture_trace_data"
-    capture_track_event = "capture_track_event"
-    create_semantic_event = "create_semantic_event"
-    extract_keywords = "extract_keywords"
-    save_user_identity = "save_user_identity"
-
-
 class OpenTraceBody(WeavelObject):
     """Start Trace body."""
 
@@ -72,9 +62,16 @@ class CaptureTraceDataBody(WeavelObject):
     trace_id: str
     role: str
     content: str
+    timestamp: Optional[str] = None
+    trace_data_id: Optional[str] = None
     unit_name: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
-    timestamp: Optional[str] = None
+
+class CaptureTraceDataMetadataBody(WeavelObject):
+    type: Literal["capture_trace_data_metadata"] = "capture_trace_data_metadata"
+    trace_data_id: str
+    metadata: Dict[str, Any]
+    timestamp: str
 
 class SaveUserIdentityBody(WeavelObject):
     """Save user identity body."""
