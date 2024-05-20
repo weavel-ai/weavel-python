@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="weavel",
-    version="0.4.4",
+    version="0.5.0",
     packages=find_namespace_packages(),
     entry_points={},
     description="Weavel, natural language analysis Dashboard for LLM Agent",
@@ -34,7 +34,6 @@ setup(
         "readerwriterlock",
         "pendulum",
         "httpx[http2]",
-        "fastapi-poe",
     ],
     python_requires=">=3.8.10",
     keywords=[
