@@ -12,6 +12,7 @@ from weavel.types import (
     OpenTraceBody,
     CaptureTraceDataBody,
     CaptureTrackEventBody,
+    CaptureTraceDataMetadataBody,
     SaveUserIdentityBody
 )
 from weavel._constants import BACKEND_SERVER_URL
@@ -122,13 +123,33 @@ class Worker:
 
         return
 
+    def log_message_metadata(
+        self,
+        trace_data_id: str,
+        metadata: Dict[str, str],
+        timestamp: Optional[datetime] = None,
+    ):
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
+            timestamp = timestamp.astimezone(timezone.utc)
+            
+        request = CaptureTraceDataMetadataBody(
+            trace_data_id=trace_data_id,
+            metadata=metadata,
+            timestamp=timestamp,
+        )
+        self.buffer_storage.push(request)
+        return
+
     def log_user_message(
         self,
         user_id: str,
         trace_id: str,
         content: str,
-        unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
+        trace_data_id: Optional[str] = None,
+        unit_name: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
     ):
         """Log the "user_message" type data to the trace.
@@ -136,8 +157,9 @@ class Worker:
         Args:
             trace_id: The trace identifier.
             content: The data content.
-            unit_name: The unit name.
             timestamp: The timestamp.
+            trace_data_id: The trace data identifier.
+            unit_name: The unit name.
             metadata: The metadata.
         """
         if timestamp is None:
@@ -150,9 +172,10 @@ class Worker:
             trace_id=trace_id,
             role=TraceDataRole.user,
             content=content,
+            timestamp=timestamp.isoformat(),
+            trace_data_id=trace_data_id,
             unit_name=unit_name,
             metadata=metadata,
-            timestamp=timestamp.isoformat(),
         )
         self.buffer_storage.push(request)
         return
@@ -162,8 +185,9 @@ class Worker:
         user_id: str,
         trace_id: str,
         content: str,
-        unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
+        trace_data_id: Optional[str] = None,
+        unit_name: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
     ):
         """Log the "llm_background_message" type data to the trace.
@@ -171,8 +195,9 @@ class Worker:
         Args:
             trace_id: The trace identifier.
             content: The data content.
-            unit_name: The unit name.
             timestamp: The timestamp.
+            trace_data_id: The trace data identifier.
+            unit_name: The unit name.
             metadata: The metadata.
         """
         if timestamp is None:
@@ -185,9 +210,10 @@ class Worker:
             trace_id=trace_id,
             role=TraceDataRole.assisatant,
             content=content,
+            timestamp=timestamp.isoformat(),
+            trace_data_id=trace_data_id,
             unit_name=unit_name,
             metadata=metadata,
-            timestamp=timestamp.isoformat(),
         )
         self.buffer_storage.push(request)
         return
@@ -197,17 +223,20 @@ class Worker:
         user_id: str,
         trace_id: str,
         content: str,
-        unit_name: Optional[str] = None,
         timestamp: Optional[datetime] = None,
+        trace_data_id: Optional[str] = None,
+        unit_name: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
+        
     ):
         """Log the "inner_step" type data to the trace.
 
         Args:
             trace_id: The trace identifier.
             content: The data content.
-            unit_name: The unit name.
             timestamp: The timestamp.
+            trace_data_id: The trace data identifier.
+            unit_name: The unit name.
             metadata: The metadata.
         """
         if timestamp is None:
@@ -220,9 +249,10 @@ class Worker:
             trace_id=trace_id,
             role=TraceDataRole.inner_step,
             content=content,
+            timestamp=timestamp.isoformat(),
+            trace_data_id=trace_data_id,
             unit_name=unit_name,
             metadata=metadata,
-            timestamp=timestamp.isoformat(),
         )
         self.buffer_storage.push(request)
         return
