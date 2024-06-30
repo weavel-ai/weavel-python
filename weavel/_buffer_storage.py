@@ -3,10 +3,11 @@ from __future__ import annotations
 from threading import Condition, Lock
 from typing import Dict, List, Union
 
-from weavel.types import (
-    OpenTraceBody,
-    CaptureTrackEventBody,
-    CaptureTraceDataBody,
+from weavel._types import (
+    OpenSessionBody,
+    CaptureRecordBody,
+    CaptureObservationBody,
+    SaveUserIdentityBody
 )
 
 
@@ -14,7 +15,7 @@ class BufferStorage:
     def __init__(self, max_buffer_size: int):
         self.max_buffer_size = max_buffer_size
         self.buffer: List[
-            Union[OpenTraceBody, CaptureTrackEventBody, CaptureTraceDataBody]
+            Union[OpenSessionBody, CaptureRecordBody, CaptureObservationBody, SaveUserIdentityBody]
         ] = []
         self.buffer_lock = Lock()
         self.not_full_cv = Condition(self.buffer_lock)
@@ -35,7 +36,7 @@ class BufferStorage:
 
     def pull(
         self, batch_size: int
-    ) -> List[Union[OpenTraceBody, CaptureTrackEventBody, CaptureTraceDataBody]]:
+    ) -> List[Union[OpenSessionBody, CaptureRecordBody, CaptureObservationBody, SaveUserIdentityBody]]:
         while not self.buffer_size:
             self.not_empty_cv.wait()
         pull_size = min(batch_size, self.buffer_size)
@@ -46,7 +47,7 @@ class BufferStorage:
 
     def pull_all(
         self,
-    ) -> List[Union[OpenTraceBody, CaptureTrackEventBody, CaptureTraceDataBody]]:
+    ) -> List[Union[OpenSessionBody, CaptureRecordBody, CaptureObservationBody, SaveUserIdentityBody]]:
         out = self.buffer[:]
         self.buffer = []
         self.not_full_cv.notify()
