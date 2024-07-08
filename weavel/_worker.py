@@ -3,16 +3,38 @@ from __future__ import annotations
 import os
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from threading import Thread
 from concurrent.futures import Future, ThreadPoolExecutor
 
-from weavel._types import (
-    OpenSessionBody,
-    CaptureRecordBody,
-    CaptureObservationBody,
-    SaveUserIdentityBody
+from weavel._request import (
+    CaptureSessionRequest,
+    IdentifyUserRequest,
+    CaptureMessageRequest,
+    CaptureTrackEventRequest,
+    CaptureTraceRequest,
+    CaptureSpanRequest,
+    CaptureLogRequest,
+    CaptureGenerationRequest,
+    UpdateTraceRequest,
+    UpdateSpanRequest,
+    UpdateGenerationRequest,
+    UnionRequest
 )
+from weavel._body import (
+    CaptureSessionBody,
+    CaptureMessageBody,
+    CaptureTrackEventBody,
+    CaptureTraceBody,
+    CaptureSpanBody,
+    CaptureLogBody,
+    CaptureGenerationBody,
+    UpdateTraceBody,
+    UpdateSpanBody,
+    UpdateGenerationBody,
+    IdentifyUserBody,
+)
+    
 from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
 from weavel._api_client import APIClient
@@ -50,9 +72,9 @@ class Worker:
 
     def open_session(
         self,
-        user_id: str,
         session_id: str,
         created_at: datetime,
+        user_id: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
     ) -> str:
         """Start the new session for user_id.
@@ -66,11 +88,13 @@ class Worker:
             created_at = created_at
 
         # add task to buffer
-        request = OpenSessionBody(
-            user_id=user_id,
-            session_id=session_id,
-            created_at=created_at.isoformat(),
-            metadata=metadata,
+        request = CaptureSessionRequest(
+            body=CaptureSessionBody(
+                user_id=user_id,
+                session_id=session_id,
+                created_at=created_at.isoformat(),
+                metadata=metadata,
+            )
         )
 
         self.buffer_storage.push(request)
@@ -88,93 +112,244 @@ class Worker:
         Returns:
             None
         """
-        request = SaveUserIdentityBody(
-            user_id=user_id,
-            properties=properties,
-            created_at=str(datetime.now(timezone.utc).isoformat()),
+        request = IdentifyUserRequest(
+            body=IdentifyUserBody(
+                user_id=user_id,
+                properties=properties,
+                created_at=datetime.now(timezone.utc).isoformat()
+            )
         )
         self.buffer_storage.push(request)
 
         return
     
-    def capture_record(
+    def capture_message(
         self,
-        type: str,
-        user_id: str,
         session_id: str,
         record_id: str,
         created_at: datetime,
-        metadata: Optional[Dict[str, str]] = None,
-        reason_record_id: Optional[str] = None,
-        role: Optional[str] = None,
-        content: Optional[str] = None,
-        name: Optional[str] = None,
-        properties: Optional[Dict[str, Any]] = None,
+        role: Literal["user", "assistant", "system"],
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        ref_record_id: Optional[str] = None,
     ):
-        """Log "Log" type data to the session.
-
-        Args:
-            session_id: The session identifier.
-            user_id: The user identifier.
-            type: The type of log.
-            created_at: The created_at of the log.
-            role: The role of the log.
-            content: The content of the log.
-            properties: The properties of the log.
-            record_id: The log identifier.
-            metadata: The metadata of the log.
-            reason_record_id: The reason log identifier.
-        """
         if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
             created_at = created_at.astimezone(timezone.utc)
         else:
             created_at = created_at
             
-        request = CaptureRecordBody(
-            user_id=user_id,
-            session_id=session_id,
-            type=type,
-            role=role,
-            content=content,
-            name=name,
-            properties=properties,
-            created_at=created_at.isoformat(),
-            record_id=record_id,
-            metadata=metadata,
-            reason_record_id=reason_record_id,
+        request = CaptureMessageRequest(
+            body=CaptureMessageBody(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at.isoformat(),
+                role=role,
+                content=content,
+                metadata=metadata,
+                ref_record_id=ref_record_id,
+            )
         )
         self.buffer_storage.push(request)
         return
-
-    def capture_observation(
+    
+    def capture_track_event(
         self,
-        type: str,
+        session_id: str,
         record_id: str,
-        observation_id: str,
         created_at: datetime,
-        metadata: Optional[Dict[str, str]] = None,
-        name: Optional[str] = None,
-        value: Optional[str] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
-        parent_observation_id: Optional[str] = None,
+        name: str,
+        properties: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        ref_record_id: Optional[str] = None,
     ):
         if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
             created_at = created_at.astimezone(timezone.utc)
         else:
             created_at = created_at
-        
-        request = CaptureObservationBody(
-            type=type,
-            record_id=record_id,
-            created_at=created_at.isoformat(),
-            metadata=metadata,
-            name=name,
-            value=value,
-            inputs=inputs,
-            outputs=outputs,
-            parent_observation_id=parent_observation_id,
-            observation_id=observation_id,
+            
+        request = CaptureTrackEventRequest(
+            body=CaptureTrackEventBody(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                properties=properties,
+                metadata=metadata,
+                ref_record_id=ref_record_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def capture_trace( 
+        self,  
+        session_id: str,
+        record_id: str,
+        created_at: datetime,
+        name: str,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None, 
+        metadata: Optional[Dict[str, Any]] = None,
+        ref_record_id: Optional[str] = None,
+    ):
+        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+            created_at = created_at.astimezone(timezone.utc)
+        else:
+            created_at = created_at
+            
+        request = CaptureTraceRequest(
+            body=CaptureTraceBody(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                ref_record_id=ref_record_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def update_trace(
+        self,
+        record_id: str,
+        ended_at: Optional[datetime] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None, 
+        metadata: Optional[Dict[str, str]] = None,
+        ref_record_id: Optional[str] = None,
+    ):
+        request = UpdateTraceRequest(
+            body=UpdateTraceBody(
+                record_id=record_id,
+                ended_at=ended_at.isoformat() if ended_at else None,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                ref_record_id=ref_record_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def capture_span(
+        self,
+        record_id: str,
+        observation_id: str,
+        created_at: datetime,
+        name: str,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = CaptureSpanRequest(
+            body=CaptureSpanBody(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def update_span(
+        self,
+        observation_id: str,
+        ended_at: Optional[datetime] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = UpdateSpanRequest(
+            body=UpdateSpanBody(
+                observation_id=observation_id,
+                ended_at=ended_at.isoformat() if ended_at else None,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def capture_log(
+        self,
+        record_id: str,
+        observation_id: str,
+        created_at: datetime,
+        name: str,
+        value: Optional[str] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = CaptureLogRequest(
+            body=CaptureLogBody(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                value=value,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def capture_generation(
+        self,
+        record_id: str,
+        observation_id: str,
+        created_at: datetime,
+        name: str,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = CaptureGenerationRequest(
+            body=CaptureGenerationBody(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def update_generation(
+        self,
+        observation_id: str,
+        ended_at: Optional[datetime] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = UpdateGenerationRequest(
+            body=UpdateGenerationBody(
+                observation_id=observation_id,
+                ended_at=ended_at.isoformat() if ended_at else None,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
         )
         self.buffer_storage.push(request)
         return
@@ -182,7 +357,7 @@ class Worker:
     def send_requests(
         self,
         requests: List[
-            Union[OpenSessionBody, CaptureRecordBody, CaptureObservationBody]
+            UnionRequest
         ],
     ):
         """

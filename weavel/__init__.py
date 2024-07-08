@@ -1,5 +1,5 @@
 from .client import Weavel
-from ._types import *
+from ._request import *
 from .utils import *
 
 __version___ = "1.0.0"

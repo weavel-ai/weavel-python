@@ -3,33 +3,70 @@ from uuid import uuid4
 from datetime import datetime, timezone
 from pydantic import Field
 
-from weavel._types import BaseModel
+from weavel._request import BaseModel
 from weavel._worker import Worker as WeavelWorker
 
 
 class Observation(BaseModel):
-    user_id: str
-    session_id: str
-    record_id: str
+    record_id: Optional[str] = None
     observation_id: str = Field(default_factory=lambda: str(uuid4()))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    name: Optional[str] = None
     metadata: Optional[Dict[str, str]] = None
     parent_observation_id: Optional[str] = None
     weavel_client: WeavelWorker
 
 class Log(Observation):
     type: Literal["log"] = "log"
-    name: str
     value: Optional[str] = None
 
 class Generation(Observation):
     type: Literal["generation"] = "generation"
-    inputs: Dict[str, Any]
-    outputs: Dict[str, Any]
+    inputs: Optional[Dict[str, Any]]
+    outputs: Optional[Dict[str, Any]]
+    ended_at: Optional[datetime] = None
+
+    def end(
+        self,
+        ended_at: Optional[datetime] = None,
+    ) -> None:
+        if ended_at is None:
+            ended_at = datetime.now(timezone.utc)
+        
+        self.weavel_client.update_generation(
+            observation_id=self.observation_id,
+            ended_at=ended_at,
+        )
+        self.ended_at = ended_at
+        return
+    
+    def update(
+        self,
+        ended_at: Optional[datetime] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ) -> None:
+        if ended_at is None:
+            ended_at = datetime.now(timezone.utc)
+        
+        self.weavel_client.update_generation(
+            observation_id=self.observation_id,
+            ended_at=ended_at,
+            inputs=inputs,
+            outputs=outputs,
+            metadata=metadata,
+            parent_observation_id=parent_observation_id,
+        )
+        self.ended_at = ended_at
+        return
 
 class Span(Observation):
     type: Literal["span"] = "span"
-    name: str
+    inputs: Optional[Dict[str, Any]] = None
+    outputs: Optional[Dict[str, Any]] = None
+    ended_at: Optional[datetime] = None
     
     def log(
         self,
@@ -45,8 +82,6 @@ class Span(Observation):
             created_at = datetime.now(timezone.utc)
 
         log = Log(
-            user_id=self.user_id,
-            session_id=self.session_id,
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=created_at,
@@ -56,8 +91,7 @@ class Span(Observation):
             parent_observation_id=self.observation_id,
             weavel_client=self.weavel_client,
         )
-        self.weavel_client.capture_observation(
-            type="log",
+        self.weavel_client.capture_log(
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=log.created_at,
@@ -70,6 +104,7 @@ class Span(Observation):
     
     def generation(
         self,
+        name: str,
         inputs: Dict[str, Any],
         outputs: Dict[str, Any],
         observation_id: Optional[str] = None,
@@ -82,25 +117,24 @@ class Span(Observation):
             created_at = datetime.now(timezone.utc)   
             
         generation = Generation(
-            user_id=self.user_id,
-            session_id=self.session_id,
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=created_at,
             metadata=metadata,
+            name=name,
             inputs=inputs,
             outputs=outputs,
             parent_observation_id=self.observation_id,
             weavel_client=self.weavel_client,
         )
-        self.weavel_client.capture_observation(
-            type="generation",
+        self.weavel_client.capture_generation(
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=generation.created_at,
-            metadata=metadata,
+            name=name,
             inputs=inputs,
             outputs=outputs,
+            metadata=metadata,
             parent_observation_id=self.observation_id,
         )
         return generation
@@ -108,6 +142,8 @@ class Span(Observation):
     def span(
         self,
         name: str,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -118,35 +154,70 @@ class Span(Observation):
             created_at = datetime.now(timezone.utc)
             
         span = Span(
-            user_id=self.user_id,
-            session_id=self.session_id,
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=created_at,
-            metadata=metadata,
             name=name,
+            inputs=inputs,
+            outputs=outputs,
+            metadata=metadata,
             parent_observation_id=self.observation_id,
             weavel_client=self.weavel_client,
         )
-        self.weavel_client.capture_observation(
-            type="span",
+        self.weavel_client.capture_span(
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=span.created_at,
-            metadata=metadata,
             name=name,
+            inputs=inputs,
+            outputs=outputs,
+            metadata=metadata,
             parent_observation_id=self.observation_id,
         )
         return span
-
+    
+    def end(
+        self,
+        ended_at: Optional[datetime] = None,
+    ) -> None:
+        if ended_at is None:
+            ended_at = datetime.now(timezone.utc)
+        
+        self.weavel_client.update_span(
+            observation_id=self.observation_id,
+            ended_at=ended_at,
+        )
+        self.ended_at = ended_at
+        return
+    
+    def update(
+        self,
+        ended_at: Optional[datetime] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ) -> None:
+        if ended_at is None:
+            ended_at = datetime.now(timezone.utc)
+        
+        self.weavel_client.update_span(
+            observation_id=self.observation_id,
+            ended_at=ended_at,
+            inputs=inputs,
+            outputs=outputs,
+            metadata=metadata,
+            parent_observation_id=parent_observation_id,
+        )
+        self.ended_at = ended_at
+        return
 
 class Record(BaseModel):
-    user_id: str
-    session_id: str 
+    session_id: Optional[str] = None
     record_id: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
     metadata: Optional[Dict[str, str]] = None
-    reason_record_id: Optional[str] = None
+    ref_record_id: Optional[str] = None
     weavel_client: WeavelWorker
 
 
@@ -162,7 +233,10 @@ class TrackEvent(Record):
 
 class Trace(Record):
     type: Literal["trace"] = "trace"
-    name: str
+    name: Optional[str] = None
+    inputs: Optional[Dict[str, Any]] = None
+    outputs: Optional[Dict[str, Any]] = None
+    ended_at: Optional[datetime] = None
     
     def log(
         self,
@@ -178,8 +252,6 @@ class Trace(Record):
             created_at = datetime.now(timezone.utc)
             
         log = Log(
-            user_id=self.user_id,
-            session_id=self.session_id,
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=created_at,
@@ -188,8 +260,7 @@ class Trace(Record):
             value=value,
             weavel_client=self.weavel_client,
         )
-        self.weavel_client.capture_observation(
-            type="log",
+        self.weavel_client.capture_log(
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=log.created_at,
@@ -201,6 +272,7 @@ class Trace(Record):
         
     def generation(
         self,
+        name: str,
         inputs: Dict[str, Any],
         outputs: Dict[str, Any],
         observation_id: Optional[str] = None,
@@ -213,34 +285,34 @@ class Trace(Record):
             created_at = datetime.now(timezone.utc)
 
         generation = Generation(
-            user_id=self.user_id,
-            session_id=self.session_id,
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=created_at,
-            metadata=metadata,
+            name=name,
             inputs=inputs,
             outputs=outputs,
+            metadata=metadata,
             weavel_client=self.weavel_client,
         )
-        self.weavel_client.capture_observation(
-            type="generation",
+        self.weavel_client.capture_generation(
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=generation.created_at,
-            metadata=metadata,
+            name=name,
             inputs=inputs,
             outputs=outputs,
+            metadata=metadata,
         )
         return generation
         
     def span(
         self,
         name: str,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
-        parent_observation_id: Optional[str] = None,
     ) -> Span:
         if observation_id is None:
             observation_id = str(uuid4())
@@ -248,30 +320,65 @@ class Trace(Record):
             created_at = datetime.now(timezone.utc)
             
         span = Span(
-            user_id=self.user_id,
-            session_id=self.session_id,
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=created_at,
-            metadata=metadata,
-            parent_observation_id=parent_observation_id,
             name=name,
+            inputs=inputs,
+            outputs=outputs,
+            metadata=metadata,
             weavel_client=self.weavel_client,
         )
-        self.weavel_client.capture_observation(
-            type="span",
+        self.weavel_client.capture_span(
             record_id=self.record_id,
             observation_id=observation_id,
             created_at=span.created_at,
-            metadata=metadata,
             name=name,
+            inputs=inputs,
+            outputs=outputs,
+            metadata=metadata,
         )
         return span
 
+    def end(
+        self,
+        ended_at: Optional[datetime] = None,
+    ) -> None:
+        if ended_at is None:
+            ended_at = datetime.now(timezone.utc)
+        
+        self.weavel_client.update_trace(
+            record_id=self.record_id,
+            ended_at=ended_at,
+        )
+        self.ended_at = ended_at
+        return
+    
+    def update(
+        self,
+        ended_at: Optional[datetime] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        ref_record_id: Optional[str] = None,
+    ) -> None:
+        if ended_at is None:
+            ended_at = datetime.now(timezone.utc)
+        
+        self.weavel_client.update_trace(
+            record_id=self.record_id,
+            ended_at=ended_at,
+            inputs=inputs,
+            outputs=outputs,
+            metadata=metadata,
+            ref_record_id=ref_record_id,
+        )
+        self.ended_at = ended_at
+        return
 
 class Session(BaseModel):
     """Session object."""
-    user_id: str
+    user_id: Optional[str]
     session_id: str
     created_at: datetime
     metadata: Optional[Dict[str, str]] = None
@@ -284,7 +391,7 @@ class Session(BaseModel):
         record_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
-        reason_record_id: Optional[str] = None,
+        ref_record_id: Optional[str] = None,
     ) -> Message:
         if record_id is None:
             record_id = str(uuid4())
@@ -292,24 +399,21 @@ class Session(BaseModel):
             created_at = datetime.now(timezone.utc)
             
         message = Message(
-            user_id=self.user_id,
             session_id=self.session_id,
             record_id=record_id,
             created_at=created_at,
             metadata=metadata,
-            reason_record_id=reason_record_id,
+            ref_record_id=ref_record_id,
             role=role,
             content=content,
             weavel_client=self.weavel_client,
         )
-        self.weavel_client.capture_record(
-            type="message",
-            user_id=self.user_id,
+        self.weavel_client.capture_message(
             session_id=self.session_id,
             record_id=record_id,
             created_at=message.created_at,
             metadata=metadata,
-            reason_record_id=reason_record_id,
+            ref_record_id=ref_record_id,
             role=role,
             content=content,
         )
@@ -318,10 +422,12 @@ class Session(BaseModel):
     def trace(
         self,
         name: str,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
         record_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
-        reason_record_id: Optional[str] = None,
+        ref_record_id: Optional[str] = None,
     ) -> Trace:
         if record_id is None:
             record_id = str(uuid4())
@@ -329,35 +435,36 @@ class Session(BaseModel):
             created_at = datetime.now(timezone.utc)
             
         trace = Trace(
-            user_id=self.user_id,
             session_id=self.session_id,
             record_id=record_id,
             created_at=created_at,
-            metadata=metadata,
-            reason_record_id=reason_record_id,
             name=name,
+            inputs=inputs,
+            outputs=outputs,
+            metadata=metadata,
+            ref_record_id=ref_record_id,
             weavel_client=self.weavel_client,
         )
-        self.weavel_client.capture_record(
-            type="trace",
-            user_id=self.user_id,
+        self.weavel_client.capture_trace(
             session_id=self.session_id,
             record_id=record_id,
             created_at=trace.created_at,
-            metadata=metadata,
-            reason_record_id=reason_record_id,
             name=name,
+            inputs=inputs,
+            outputs=outputs,
+            metadata=metadata,
+            ref_record_id=ref_record_id,
         )
         return trace
     
-    def track_event(
+    def track(
         self,
         name: str,
         properties: Optional[Dict[str, str]] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
         record_id: Optional[str] = None,
-        reason_record_id: Optional[str] = None,
+        ref_record_id: Optional[str] = None,
     ) -> TrackEvent:
         if record_id is None:
             record_id = str(uuid4())
@@ -365,25 +472,22 @@ class Session(BaseModel):
             created_at = datetime.now(timezone.utc)
             
         track_event = TrackEvent(
-            user_id=self.user_id,
             session_id=self.session_id,
             record_id=record_id,
             created_at=created_at,
-            metadata=metadata,
-            reason_record_id=reason_record_id,
             name=name,
             properties=properties,
+            metadata=metadata,
+            ref_record_id=ref_record_id,
             weavel_client=self.weavel_client,
         )
-        self.weavel_client.capture_record(
-            type="track_event",
-            user_id=self.user_id,
+        self.weavel_client.capture_track_event(
             session_id=self.session_id,
             record_id=record_id,
             created_at=track_event.created_at,
-            metadata=metadata,
-            reason_record_id=reason_record_id,
             name=name,
             properties=properties,
+            metadata=metadata,
+            ref_record_id=ref_record_id,
         )
         return track_event

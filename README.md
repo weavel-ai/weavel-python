@@ -35,7 +35,7 @@ session.message(
     content="Nice to meet you!"
 )
 
-session.track_event(
+session.track(
     name="Main Page Viewed"
 )
 
