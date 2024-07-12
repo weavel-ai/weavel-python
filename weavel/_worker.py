@@ -52,11 +52,12 @@ class Worker:
     def __init__(
         self,
         api_key: str,
+        base_url: Optional[str] = None
     ) -> None:
         if not hasattr(self, "is_initialized"):
             self.api_key = api_key
-            self.endpoint = BACKEND_SERVER_URL
-
+            self.endpoint = BACKEND_SERVER_URL if not base_url else base_url
+            self.endpoint += "/public/v2"
             self.max_retry = 3
             self.flush_interval = 60
             self.flush_batch_size = 20

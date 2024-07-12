@@ -23,7 +23,7 @@ class Log(Observation):
 class Generation(Observation):
     type: Literal["generation"] = "generation"
     inputs: Optional[Dict[str, Any]]
-    outputs: Optional[Dict[str, Any]]
+    outputs: Optional[Dict[str, Any]] = None
     ended_at: Optional[datetime] = None
 
     def end(
@@ -105,8 +105,8 @@ class Span(Observation):
     def generation(
         self,
         name: str,
-        inputs: Dict[str, Any],
-        outputs: Dict[str, Any],
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -273,8 +273,8 @@ class Trace(Record):
     def generation(
         self,
         name: str,
-        inputs: Dict[str, Any],
-        outputs: Dict[str, Any],
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,

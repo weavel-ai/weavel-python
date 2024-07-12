@@ -31,10 +31,11 @@ class Weavel:
     def __init__(
         self,
         api_key: Optional[str] = None,
+        base_url: Optional[str] = None
     ):
         self.api_key = api_key or os.getenv("WEAVEL_API_KEY")
         assert self.api_key is not None, "API key not provided."
-        self._worker = Worker(self.api_key)
+        self._worker = Worker(self.api_key, base_url=base_url)
         
     def session(
         self,
@@ -162,13 +163,20 @@ class Weavel:
         metadata: Optional[Dict[str, Any]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        if record_id is None and observation_id is None:
-            raise ValueError("record_id or observation_id must be provided.")
+        # if record_id, observation_id, parent_observation_id
+        # None, None, None -> ValueError
+        # None, Value -> Fetch
+        # Value -> Create
+        # None, -, Value -> Create
+        
+        if not record_id and not observation_id and not parent_observation_id:
+            raise ValueError("One of the record_id, observation_id, or parent_observation_id must be provided.")
 
-        if record_id is not None and name is None:
+        if (record_id or (record_id is None and parent_observation_id)) and name is None:
             raise ValueError("If you want to create a new span, you must provide a name.")
 
-        if record_id is not None:
+        
+        if record_id is not None or (record_id is None and parent_observation_id is not None):
             # Create a new span
             if observation_id is None:
                 observation_id = str(uuid4())
