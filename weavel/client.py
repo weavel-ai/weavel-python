@@ -1,86 +1,18 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Literal, Optional, Any
+from uuid import uuid4
 
 from dotenv import load_dotenv
 
 from weavel._worker import Worker
+from weavel.types.instances import Session, Span, Trace
 
 load_dotenv()
 
-
-class Trace:
-    def __init__(
-        self,
-        worker: Worker,
-        user_id: str,
-        trace_id: str,
-    ):
-        self.worker = worker
-        self.user_id = user_id
-        self.trace_id = trace_id
-
-    def log_message(
-        self,
-        # pylint: disable=redefined-builtin
-        type: Literal["user", "assistant"],
-        content: str,
-        timestamp: Optional[datetime] = None,
-        trace_data_id: Optional[str] = None,
-        unit_name: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
-    ):
-        """
-        Logs a message with the specified type, content, timestamp, unit name, and metadata.
-
-        Args:
-            type (Literal["user", "assistant"]): The type of the message. Must be either "user" or "assistant".
-            content (str): The content of the message.
-            timestamp (Optional[datetime], optional): The timestamp of the message. Defaults to None.
-            trace_data_id (Optional[str], optional): The trace data ID associated with the message. Defaults to None.
-            unit_name (Optional[str], optional): The unit name associated with the message. Defaults to None.
-            metadata (Optional[Dict[str, str]], optional): Additional metadata for the message. Defaults to None.
-
-        Raises:
-            ValueError: If an invalid message type is provided.
-        """
-        if type == "user":
-            self.worker.log_user_message(
-                self.user_id, self.trace_id, content, timestamp, trace_data_id, unit_name, metadata
-            )
-        elif type == "assistant":
-            self.worker.log_assistant_message(
-                self.user_id, self.trace_id, content, timestamp, trace_data_id, unit_name, metadata
-            )
-        else:
-            raise ValueError("Invalid message type.")
-
-    def log_inner_step(
-        self,
-        content: str,
-        timestamp: Optional[datetime] = None,
-        trace_data_id: Optional[str] = None,
-        unit_name: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
-    ):
-        """
-        Logs an inner step in the worker.
-
-        Args:
-            content (str): The content of the inner step.
-            timestamp (Optional[datetime], optional): The timestamp of the inner step. Defaults to None.
-            trace_data_id (Optional[str], optional): The trace data ID of the inner step. Defaults to None.
-            unit_name (Optional[str], optional): The unit name of the inner step. Defaults to None.
-            metadata (Optional[Dict[str, str]], optional): Additional metadata for the inner step. Defaults to None.
-        """
-        self.worker.log_inner_step(
-            self.user_id, self.trace_id, content, timestamp, trace_data_id, unit_name, metadata
-        )
-
-
-class WeavelClient:
+class Weavel:
     """Client for interacting with the Weavel service.
 
     This class provides methods for creating and managing traces, tracking user actions,
@@ -99,69 +31,54 @@ class WeavelClient:
     def __init__(
         self,
         api_key: Optional[str] = None,
+        base_url: Optional[str] = None
     ):
         self.api_key = api_key or os.getenv("WEAVEL_API_KEY")
         assert self.api_key is not None, "API key not provided."
-        self._worker = Worker(self.api_key)
-
-    def open_trace(
-        self,
-        user_id: str,
-        trace_id: str,
-        timestamp: Optional[datetime] = None,
-        metadata: Optional[Dict[str, str]] = None,
-    ) -> Trace:
-        """Start a new trace for the specified user.
-
-        Args:
-            user_id (str): The user's identifier.
-            trace_id (str): The trace identifier.
-            timestamp (datetime, optional): The timestamp for the trace. If not provided,
-                the current timestamp will be used.
-            metadata (Dict[str, str], optional): Additional metadata for the trace.
-
-        Returns:
-            Trace: The trace instance.
-
-        """
-        self._worker.open_trace(trace_id, user_id, timestamp, metadata)
-        trace = Trace(self._worker, user_id, trace_id)
-        return trace
-
-    def resume_trace(
-        self,
-        user_id: str,
-        trace_id: str,
-    ) -> Trace:
-        """Resume an existing trace for the specified user.
-
-        Args:
-            user_id (str): The user's identifier.
-            trace_id (str): The trace identifier.
-
-        Returns:
-            Trace: The trace instance.
-
-        """
-        return Trace(self._worker, user_id, trace_id)
-
-    def track(self, user_id: str, event_name: str, properties: Dict, trace_id: Optional[str] = None):
-        """Track a user's track event.
-
-        This method is used to track user actions such as "paid", "subscribed", "unsubscribed", etc.
-
-        Args:
-            user_id (str): The identifier of the user.
-            event_name (str): The name of the track event.
-            properties (Dict): The properties of the track event.
-            trace_id (str, optional): The ID of the trace associated with the track event.
-
-        """
-        self._worker.log_track_event(user_id, event_name, properties, trace_id)
+        self._worker = Worker(self.api_key, base_url=base_url)
         
-    def log_message_metadata(self, trace_data_id: str, metadata: Dict[str, str], timestamp: Optional[datetime] = None):
-        """Add metadata to a message."""
-        self._worker.log_message_metadata(trace_data_id, metadata, timestamp)
+    def session(
+        self,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        created_at: Optional[datetime] = None,
+        metadata: Optional[Dict[str, str]] = None,
+    ) -> Session:
+        """Create a new session for the specified user.
+
+        Args:
+            user_id (str): The user ID for the session.
+            session_id (str, optional): The session ID. If not provided, a new session ID will be generated.
+            created_at (datetime, optional): The created_at for the session. If not provided, the current time will be used.
+            metadata (Dict[str, str], optional): Additional metadata for the session.
+
+        Returns:
+            Session: The session object.
+
+        """
+        if user_id is None and session_id is None:
+            raise ValueError("user_id or session_id must be provided.")
+        
+        if session_id is None:
+            session_id = str(uuid4())
+        if created_at is None:
+            created_at = datetime.now(timezone.utc)
+            
+        session = Session(
+            user_id=user_id,
+            session_id=session_id,
+            created_at=created_at,
+            metadata=metadata,
+            weavel_client=self._worker
+        )
+        if user_id is not None:
+            self._worker.open_session(
+                session_id=session_id,
+                created_at=created_at,
+                user_id=user_id,
+                metadata=metadata
+            )
+        return session
         
     def identify(self, user_id: str, properties: Dict[str, Any]):
         """Identify a user with the specified properties.
@@ -172,20 +89,163 @@ class WeavelClient:
         
         self._worker.identify_user(user_id, properties)
         
+    def trace(
+        self,
+        session_id: Optional[str] = None,
+        record_id: Optional[str] = None,
+        created_at: Optional[datetime] = None,
+        name: Optional[str] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        ref_record_id: Optional[str] = None,
+    ) -> Trace:
+        """Create a new trace record or fetch an existing one
+
+        Args:
+            session_id (str, optional): The session ID for the trace.
+            record_id (str, optional): The record ID. If not provided, a new record ID will be generated.
+            created_at (datetime, optional): The created_at for the trace. If not provided, the current time will be used.
+            name (str, optional): The name of the trace.
+            inputs (Dict[str, Any], optional): The inputs for the trace.
+            outputs (Dict[str, Any], optional): The outputs for the trace.
+            metadata (Dict[str, Any], optional): Additional metadata for the trace.
+            ref_record_id (str, optional): The record ID to reference.
+
+        """
+        if session_id is None and record_id is None:
+            raise ValueError("session_id or record_id must be provided.")
+
+        if session_id is not None and name is None:
+            raise ValueError("If you want to create a new trace, you must provide a name.")
+        
+        if session_id is not None:
+            # Create a new trace
+            if record_id is None:
+                record_id = str(uuid4())
+            if created_at is None:
+                created_at = datetime.now(timezone.utc)
+            self._worker.capture_trace(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at,
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                ref_record_id=ref_record_id
+            )
+            return Trace(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at,
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                weavel_client=self._worker
+            )
+        else:
+            # Fetch an existing trace
+            return Trace(
+                record_id=record_id,
+                weavel_client=self._worker
+            )
+    
+    def span(
+        self,
+        record_id: Optional[str] = None,
+        observation_id: Optional[str] = None,
+        created_at: Optional[datetime] = None,
+        name: Optional[str] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        # if record_id, observation_id, parent_observation_id
+        # None, None, None -> ValueError
+        # None, Value -> Fetch
+        # Value -> Create
+        # None, -, Value -> Create
+        
+        if not record_id and not observation_id and not parent_observation_id:
+            raise ValueError("One of the record_id, observation_id, or parent_observation_id must be provided.")
+
+        if (record_id or (record_id is None and parent_observation_id)) and name is None:
+            raise ValueError("If you want to create a new span, you must provide a name.")
+
+        
+        if record_id is not None or (record_id is None and parent_observation_id is not None):
+            # Create a new span
+            if observation_id is None:
+                observation_id = str(uuid4())
+            if created_at is None:
+                created_at = datetime.now(timezone.utc)
+            self._worker.capture_span(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at,
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id
+            )
+            return Span(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at,
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+                weavel_client=self._worker
+            )
+        else:
+            # Fetch an existing span
+            return Span(
+                observation_id=observation_id,
+                weavel_client=self._worker
+            )
+    
+    def track(
+        self,
+        session_id: str,
+        name: str,
+        properties: Optional[Dict[str, Any]] = None,
+        created_at: Optional[datetime] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        record_id: Optional[str] = None,
+        ref_record_id: Optional[str] = None,
+    ) -> None:
+        """Track an event for the specified session.
+
+        Args:
+            session_id (str): The session ID for the event.
+            name (str): The name of the event.
+            properties (Dict[str, Any], optional): Additional properties for the event.
+
+        """
+        if created_at is None:
+            created_at = datetime.now(timezone.utc)
+        
+        self._worker.capture_track_event(
+            session_id=session_id,
+            record_id=record_id,
+            created_at=created_at,
+            name=name,
+            properties=properties,
+            metadata=metadata,
+            ref_record_id=ref_record_id
+        )
 
     def close(self):
         """Close the client connection."""
         self._worker.stop()
+    
+    def flush(self):
+        """Flush the buffer."""
+        self._worker.flush()
 
-
-def create_client(
-    api_key: Optional[str] = None,
-) -> WeavelClient:
-    """Create a Weavel client.
-
-    Args:
-        api_key: The API key.
-    Returns:
-        The Weavel client.
-    """
-    return WeavelClient(api_key=api_key)

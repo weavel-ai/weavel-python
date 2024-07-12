@@ -3,18 +3,38 @@ from __future__ import annotations
 import os
 import time
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from threading import Thread
 from concurrent.futures import Future, ThreadPoolExecutor
 
-from weavel.types import (
-    TraceDataRole,
-    OpenTraceBody,
-    CaptureTraceDataBody,
-    CaptureTrackEventBody,
-    CaptureTraceDataMetadataBody,
-    SaveUserIdentityBody
+from weavel._request import (
+    CaptureSessionRequest,
+    IdentifyUserRequest,
+    CaptureMessageRequest,
+    CaptureTrackEventRequest,
+    CaptureTraceRequest,
+    CaptureSpanRequest,
+    CaptureLogRequest,
+    CaptureGenerationRequest,
+    UpdateTraceRequest,
+    UpdateSpanRequest,
+    UpdateGenerationRequest,
+    UnionRequest
 )
+from weavel._body import (
+    CaptureSessionBody,
+    CaptureMessageBody,
+    CaptureTrackEventBody,
+    CaptureTraceBody,
+    CaptureSpanBody,
+    CaptureLogBody,
+    CaptureGenerationBody,
+    UpdateTraceBody,
+    UpdateSpanBody,
+    UpdateGenerationBody,
+    IdentifyUserBody,
+)
+    
 from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
 from weavel._api_client import APIClient
@@ -32,11 +52,12 @@ class Worker:
     def __init__(
         self,
         api_key: str,
+        base_url: Optional[str] = None
     ) -> None:
         if not hasattr(self, "is_initialized"):
             self.api_key = api_key
-            self.endpoint = BACKEND_SERVER_URL
-
+            self.endpoint = BACKEND_SERVER_URL if not base_url else base_url
+            self.endpoint += "/public/v2"
             self.max_retry = 3
             self.flush_interval = 60
             self.flush_batch_size = 20
@@ -50,34 +71,36 @@ class Worker:
             self._thread.start()
             self.is_initialized = True
 
-    def open_trace(
+    def open_session(
         self,
-        trace_id: str,
-        user_id: str,
-        timestamp: Optional[datetime] = None,
+        session_id: str,
+        created_at: datetime,
+        user_id: Optional[str] = None,
         metadata: Optional[Dict[str, str]] = None,
     ) -> str:
-        """Start the new trace for user_id.
+        """Start the new session for user_id.
 
         Returns:
-            The trace id.
+            The session id.
         """
-        if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
-        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
-            timestamp = timestamp.astimezone(timezone.utc)
+        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+            created_at = created_at.astimezone(timezone.utc)
+        else:
+            created_at = created_at
 
         # add task to buffer
-        request = OpenTraceBody(
-            user_id=user_id,
-            trace_id=trace_id,
-            timestamp=timestamp.isoformat(),
-            metadata=metadata,
+        request = CaptureSessionRequest(
+            body=CaptureSessionBody(
+                user_id=user_id,
+                session_id=session_id,
+                created_at=created_at.isoformat(),
+                metadata=metadata,
+            )
         )
 
         self.buffer_storage.push(request)
 
-        return trace_id
+        return
     
     def identify_user(self, user_id: str, properties: Dict) -> None:
         """
@@ -90,169 +113,244 @@ class Worker:
         Returns:
             None
         """
-        request = SaveUserIdentityBody(
-            user_id=user_id,
-            properties=properties,
-            timestamp=str(datetime.now(timezone.utc).isoformat()),
+        request = IdentifyUserRequest(
+            body=IdentifyUserBody(
+                user_id=user_id,
+                properties=properties,
+                created_at=datetime.now(timezone.utc).isoformat()
+            )
         )
         self.buffer_storage.push(request)
 
         return
-
-    def log_track_event(self, user_id: str, name: str, properties: Dict, trace_id: Optional[str]) -> None:
-        """
-        Logs a track event for a user.
-
-        Args:
-            user_id (str): The ID of the user.
-            name (str): The name of the track event.
-            properties (Dict): Additional properties associated with the track event.
-            trace_id (Optional[str]): The ID of the trace associated with the track event.
-
-        Returns:
-            None
-        """
-        request = CaptureTrackEventBody(
-            user_id=user_id,
-            track_event_name=name,
-            properties=properties,
-            timestamp=str(datetime.now(timezone.utc).isoformat()),
-            trace_id=trace_id,
-        )
-        self.buffer_storage.push(request)
-
-        return
-
-    def log_message_metadata(
+    
+    def capture_message(
         self,
-        trace_data_id: str,
-        metadata: Dict[str, str],
-        timestamp: Optional[datetime] = None,
-    ):
-        if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
-        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
-            timestamp = timestamp.astimezone(timezone.utc)
-            
-        request = CaptureTraceDataMetadataBody(
-            trace_data_id=trace_data_id,
-            metadata=metadata,
-            timestamp=timestamp,
-        )
-        self.buffer_storage.push(request)
-        return
-
-    def log_user_message(
-        self,
-        user_id: str,
-        trace_id: str,
+        session_id: str,
+        record_id: str,
+        created_at: datetime,
+        role: Literal["user", "assistant", "system"],
         content: str,
-        timestamp: Optional[datetime] = None,
-        trace_data_id: Optional[str] = None,
-        unit_name: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        ref_record_id: Optional[str] = None,
     ):
-        """Log the "user_message" type data to the trace.
-
-        Args:
-            trace_id: The trace identifier.
-            content: The data content.
-            timestamp: The timestamp.
-            trace_data_id: The trace data identifier.
-            unit_name: The unit name.
-            metadata: The metadata.
-        """
-        if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
-        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
-            timestamp = timestamp.astimezone(timezone.utc)
+        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+            created_at = created_at.astimezone(timezone.utc)
+        else:
+            created_at = created_at
             
-        request = CaptureTraceDataBody(
-            user_id=user_id,
-            trace_id=trace_id,
-            role=TraceDataRole.user,
-            content=content,
-            timestamp=timestamp.isoformat(),
-            trace_data_id=trace_data_id,
-            unit_name=unit_name,
-            metadata=metadata,
+        request = CaptureMessageRequest(
+            body=CaptureMessageBody(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at.isoformat(),
+                role=role,
+                content=content,
+                metadata=metadata,
+                ref_record_id=ref_record_id,
+            )
         )
         self.buffer_storage.push(request)
         return
-
-    def log_assistant_message(
+    
+    def capture_track_event(
         self,
-        user_id: str,
-        trace_id: str,
-        content: str,
-        timestamp: Optional[datetime] = None,
-        trace_data_id: Optional[str] = None,
-        unit_name: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
+        session_id: str,
+        record_id: str,
+        created_at: datetime,
+        name: str,
+        properties: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        ref_record_id: Optional[str] = None,
     ):
-        """Log the "llm_background_message" type data to the trace.
-
-        Args:
-            trace_id: The trace identifier.
-            content: The data content.
-            timestamp: The timestamp.
-            trace_data_id: The trace data identifier.
-            unit_name: The unit name.
-            metadata: The metadata.
-        """
-        if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
-        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
-            timestamp = timestamp.astimezone(timezone.utc)
+        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+            created_at = created_at.astimezone(timezone.utc)
+        else:
+            created_at = created_at
             
-        request = CaptureTraceDataBody(
-            user_id=user_id,
-            trace_id=trace_id,
-            role=TraceDataRole.assisatant,
-            content=content,
-            timestamp=timestamp.isoformat(),
-            trace_data_id=trace_data_id,
-            unit_name=unit_name,
-            metadata=metadata,
+        request = CaptureTrackEventRequest(
+            body=CaptureTrackEventBody(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                properties=properties,
+                metadata=metadata,
+                ref_record_id=ref_record_id,
+            )
         )
         self.buffer_storage.push(request)
         return
-
-    def log_inner_step(
-        self,
-        user_id: str,
-        trace_id: str,
-        content: str,
-        timestamp: Optional[datetime] = None,
-        trace_data_id: Optional[str] = None,
-        unit_name: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
-        
+    
+    def capture_trace( 
+        self,  
+        session_id: str,
+        record_id: str,
+        created_at: datetime,
+        name: str,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None, 
+        metadata: Optional[Dict[str, Any]] = None,
+        ref_record_id: Optional[str] = None,
     ):
-        """Log the "inner_step" type data to the trace.
-
-        Args:
-            trace_id: The trace identifier.
-            content: The data content.
-            timestamp: The timestamp.
-            trace_data_id: The trace data identifier.
-            unit_name: The unit name.
-            metadata: The metadata.
-        """
-        if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
-        elif timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
-            timestamp = timestamp.astimezone(timezone.utc)
+        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+            created_at = created_at.astimezone(timezone.utc)
+        else:
+            created_at = created_at
             
-        request = CaptureTraceDataBody(
-            user_id=user_id,
-            trace_id=trace_id,
-            role=TraceDataRole.inner_step,
-            content=content,
-            timestamp=timestamp.isoformat(),
-            trace_data_id=trace_data_id,
-            unit_name=unit_name,
-            metadata=metadata,
+        request = CaptureTraceRequest(
+            body=CaptureTraceBody(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                ref_record_id=ref_record_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def update_trace(
+        self,
+        record_id: str,
+        ended_at: Optional[datetime] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None, 
+        metadata: Optional[Dict[str, str]] = None,
+        ref_record_id: Optional[str] = None,
+    ):
+        request = UpdateTraceRequest(
+            body=UpdateTraceBody(
+                record_id=record_id,
+                ended_at=ended_at.isoformat() if ended_at else None,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                ref_record_id=ref_record_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def capture_span(
+        self,
+        record_id: str,
+        observation_id: str,
+        created_at: datetime,
+        name: str,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = CaptureSpanRequest(
+            body=CaptureSpanBody(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def update_span(
+        self,
+        observation_id: str,
+        ended_at: Optional[datetime] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = UpdateSpanRequest(
+            body=UpdateSpanBody(
+                observation_id=observation_id,
+                ended_at=ended_at.isoformat() if ended_at else None,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def capture_log(
+        self,
+        record_id: str,
+        observation_id: str,
+        created_at: datetime,
+        name: str,
+        value: Optional[str] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = CaptureLogRequest(
+            body=CaptureLogBody(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                value=value,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def capture_generation(
+        self,
+        record_id: str,
+        observation_id: str,
+        created_at: datetime,
+        name: str,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = CaptureGenerationRequest(
+            body=CaptureGenerationBody(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at.isoformat(),
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
+        )
+        self.buffer_storage.push(request)
+        return
+    
+    def update_generation(
+        self,
+        observation_id: str,
+        ended_at: Optional[datetime] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        outputs: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        request = UpdateGenerationRequest(
+            body=UpdateGenerationBody(
+                observation_id=observation_id,
+                ended_at=ended_at.isoformat() if ended_at else None,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+            )
         )
         self.buffer_storage.push(request)
         return
@@ -260,14 +358,14 @@ class Worker:
     def send_requests(
         self,
         requests: List[
-            Union[OpenTraceBody, CaptureTrackEventBody, CaptureTraceDataBody]
+            UnionRequest
         ],
     ):
         """
         Sends a batch of requests to the API endpoint.
 
         Args:
-            requests (List[Union[OpenTraceBody, CaptureTrackEventBody, CaptureTraceDataBody]]):
+            requests (List[Union[OpenSessionBody, CaptureRecordBody, CaptureObservationBody]]):
                 A list of requests to be sent to the API endpoint.
 
         Returns:
