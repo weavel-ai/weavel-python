@@ -200,6 +200,10 @@ class CaptureSpanBody(CaptureObservationBody):
         default=None,
         description="The outputs of the generation. Optional.",
     )
+    test_uuid: Optional[str] = Field(
+        default=None,
+        description="The test UUID for the observation. Optional.",
+    )
 
 
 class CaptureLogBody(CaptureObservationBody):
@@ -233,6 +237,10 @@ class CaptureGenerationBody(CaptureObservationBody):
         default=None,
         description="The outputs of the generation. Optional.",
     )
+    test_uuid: Optional[str] = Field(
+        default=None,
+        description="The test UUID for the observation. Optional.",
+    )
 
 class UpdateTraceBody(BaseRecordBody):
     record_id: str
@@ -248,6 +256,7 @@ class UpdateSpanBody(BaseObservationBody):
     inputs: Optional[Dict[str, Any]] = None
     outputs: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
+    test_uuid: Optional[str] = None
 
 
 
@@ -257,6 +266,7 @@ class UpdateGenerationBody(BaseObservationBody):
     inputs: Optional[Dict[str, Any]] = None
     outputs: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
+    test_uuid: Optional[str] = None
 
 
 class IdentifyUserBody(BaseModel):

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import os
 from datetime import datetime, timezone
-from typing import Dict, Literal, Optional, Any
+from typing import Dict, List, Literal, Optional, Any
 from uuid import uuid4
 
 from dotenv import load_dotenv
@@ -37,6 +39,9 @@ class Weavel:
         assert self.api_key is not None, "API key not provided."
         self._worker = Worker(self.api_key, base_url=base_url)
         
+        self.testing = False
+        self.test_uuid = None
+
     def session(
         self,
         user_id: Optional[str] = None,
@@ -71,6 +76,9 @@ class Weavel:
             metadata=metadata,
             weavel_client=self._worker
         )
+        if self.testing:
+            return session
+        
         if user_id is not None:
             self._worker.open_session(
                 session_id=session_id,
@@ -86,7 +94,8 @@ class Weavel:
         You can save any user information you know about a user for user_id, such as their email, name, or phone number in dict format.
         Properties will be updated for every call.
         """
-        
+        if self.testing:
+            return
         self._worker.identify_user(user_id, properties)
         
     def trace(
@@ -125,16 +134,18 @@ class Weavel:
                 record_id = str(uuid4())
             if created_at is None:
                 created_at = datetime.now(timezone.utc)
-            self._worker.capture_trace(
-                session_id=session_id,
-                record_id=record_id,
-                created_at=created_at,
-                name=name,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                ref_record_id=ref_record_id
-            )
+                
+            if not self.testing:
+                self._worker.capture_trace(
+                    session_id=session_id,
+                    record_id=record_id,
+                    created_at=created_at,
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id
+                )
             return Trace(
                 session_id=session_id,
                 record_id=record_id,
@@ -190,7 +201,8 @@ class Weavel:
                 inputs=inputs,
                 outputs=outputs,
                 metadata=metadata,
-                parent_observation_id=parent_observation_id
+                parent_observation_id=parent_observation_id,
+                test_uuid=self.test_uuid
             )
             return Span(
                 record_id=record_id,
@@ -231,15 +243,79 @@ class Weavel:
         if created_at is None:
             created_at = datetime.now(timezone.utc)
         
-        self._worker.capture_track_event(
-            session_id=session_id,
-            record_id=record_id,
-            created_at=created_at,
-            name=name,
-            properties=properties,
-            metadata=metadata,
-            ref_record_id=ref_record_id
-        )
+        if not self.testing:
+            self._worker.capture_track_event(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at,
+                name=name,
+                properties=properties,
+                metadata=metadata,
+                ref_record_id=ref_record_id
+            )
+        
+    def test(
+        self,
+        func: callable,
+        dataset_name: str,
+        tags: Optional[List[str]] = None
+    ):
+        """Test the function with the dataset.
+        It must be used in the jupyter notebook environment.
+
+        Args:
+            func (callable): The function to test.
+            dataset_name (str): The name of the dataset.
+
+        """
+        import nest_asyncio
+
+        nest_asyncio.apply()
+
+        # fetch dataset from server 
+        datasets: List[Dict[str, Any]] = self._worker.get_dataset(dataset_name)
+        
+        if not datasets:
+            raise ValueError(f"Dataset {dataset_name} not found.")
+        
+        # create test instance in database 
+        test_uuid = str(uuid4())
+        self._worker.create_test(test_uuid, dataset_name, tags)
+        
+        # run function on dataset concurrently
+        # If the function is coroutine, run parallelly with asyncio.gather
+        # If the function is not coroutine, run parallelly with ThreadPoolExecutor
+        
+        
+        self.testing = True
+        self.test_uuid = test_uuid  
+        self._worker.testing = True
+        self._worker.test_uuid = test_uuid
+        
+        async def run_async(func, dataset):
+            coros = [func(**data) for data in dataset]
+            return await asyncio.gather(*coros)
+        
+        def run_threaded(func, dataset):
+            with ThreadPoolExecutor() as executor:
+                futures = [executor.submit(func, **data) for data in dataset]
+                return [future.result() for future in futures]
+        
+        print("Testing...")
+        if asyncio.iscoroutinefunction(func):
+            asyncio.run(run_async(func, datasets))
+        else:
+            run_threaded(func, datasets)
+            
+        print("Test finished. Start Logging...")
+        
+        self._worker.testing = False
+        self._worker.test_uuid = None
+        self.testing = False
+        self.test_uuid = None
+        
+        self._worker.flush()
+        print("Test completed.")
 
     def close(self):
         """Close the client connection."""

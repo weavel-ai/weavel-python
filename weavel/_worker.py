@@ -70,6 +70,9 @@ class Worker:
             self._thread = Thread(target=self.consume_buffer, daemon=True)
             self._thread.start()
             self.is_initialized = True
+            
+            self.testing = False
+            self.test_uuid = None
 
     def open_session(
         self,
@@ -134,23 +137,24 @@ class Worker:
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
-            created_at = created_at.astimezone(timezone.utc)
-        else:
-            created_at = created_at
-            
-        request = CaptureMessageRequest(
-            body=CaptureMessageBody(
-                session_id=session_id,
-                record_id=record_id,
-                created_at=created_at.isoformat(),
-                role=role,
-                content=content,
-                metadata=metadata,
-                ref_record_id=ref_record_id,
+        if not self.testing:
+            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+                created_at = created_at.astimezone(timezone.utc)
+            else:
+                created_at = created_at
+                
+            request = CaptureMessageRequest(
+                body=CaptureMessageBody(
+                    session_id=session_id,
+                    record_id=record_id,
+                    created_at=created_at.isoformat(),
+                    role=role,
+                    content=content,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def capture_track_event(
@@ -163,23 +167,24 @@ class Worker:
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
-            created_at = created_at.astimezone(timezone.utc)
-        else:
-            created_at = created_at
-            
-        request = CaptureTrackEventRequest(
-            body=CaptureTrackEventBody(
-                session_id=session_id,
-                record_id=record_id,
-                created_at=created_at.isoformat(),
-                name=name,
-                properties=properties,
-                metadata=metadata,
-                ref_record_id=ref_record_id,
+        if not self.testing:
+            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+                created_at = created_at.astimezone(timezone.utc)
+            else:
+                created_at = created_at
+                
+            request = CaptureTrackEventRequest(
+                body=CaptureTrackEventBody(
+                    session_id=session_id,
+                    record_id=record_id,
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    properties=properties,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def capture_trace( 
@@ -193,24 +198,25 @@ class Worker:
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
-            created_at = created_at.astimezone(timezone.utc)
-        else:
-            created_at = created_at
-            
-        request = CaptureTraceRequest(
-            body=CaptureTraceBody(
-                session_id=session_id,
-                record_id=record_id,
-                created_at=created_at.isoformat(),
-                name=name,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                ref_record_id=ref_record_id,
+        if not self.testing:
+            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+                created_at = created_at.astimezone(timezone.utc)
+            else:
+                created_at = created_at
+                
+            request = CaptureTraceRequest(
+                body=CaptureTraceBody(
+                    session_id=session_id,
+                    record_id=record_id,
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def update_trace(
@@ -222,17 +228,18 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        request = UpdateTraceRequest(
-            body=UpdateTraceBody(
-                record_id=record_id,
-                ended_at=ended_at.isoformat() if ended_at else None,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                ref_record_id=ref_record_id,
+        if not self.testing:
+            request = UpdateTraceRequest(
+                body=UpdateTraceBody(
+                    record_id=record_id,
+                    ended_at=ended_at.isoformat() if ended_at else None,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def capture_span(
@@ -256,6 +263,7 @@ class Worker:
                 outputs=outputs,
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
+                test_uuid=self.test_uuid
             )
         )
         self.buffer_storage.push(request)
@@ -278,6 +286,7 @@ class Worker:
                 outputs=outputs,
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
+                test_uuid=self.test_uuid
             )
         )
         self.buffer_storage.push(request)
@@ -293,18 +302,19 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        request = CaptureLogRequest(
-            body=CaptureLogBody(
-                record_id=record_id,
-                observation_id=observation_id,
-                created_at=created_at.isoformat(),
-                name=name,
-                value=value,
-                metadata=metadata,
-                parent_observation_id=parent_observation_id,
+        if not self.testing:
+            request = CaptureLogRequest(
+                body=CaptureLogBody(
+                    record_id=record_id,
+                    observation_id=observation_id,
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    value=value,
+                    metadata=metadata,
+                    parent_observation_id=parent_observation_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def capture_generation(
@@ -328,6 +338,7 @@ class Worker:
                 outputs=outputs,
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
+                test_uuid=self.test_uuid
             )
         )
         self.buffer_storage.push(request)
@@ -350,11 +361,47 @@ class Worker:
                 outputs=outputs,
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
+                test_uuid=self.test_uuid
             )
         )
         self.buffer_storage.push(request)
         return
 
+    def get_dataset(
+        self,
+        dataset_name: str,
+    ) -> List[Dict[str, Any]]:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/test/{dataset_name}",
+            method="GET",
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to get dataset: {response.text}")
+        
+    def create_test(
+        self,
+        test_uuid: str,
+        dataset_name: str,
+        tags: Optional[List[str]] = None,
+    ) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/test",
+            method="POST",
+            json={
+                "test_uuid": test_uuid,
+                "dataset_name": dataset_name,
+                "tags": tags,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to create test: {response.text}")
+        
     def send_requests(
         self,
         requests: List[
