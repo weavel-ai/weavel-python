@@ -86,7 +86,7 @@ class APIClient:
             )
             if not response:
                 print(f"[red]Error: {response}[/red]")
-                exit()
+                return
             if response.status_code == 200:
                 return response
             elif response.status_code == 403:
@@ -94,10 +94,10 @@ class APIClient:
                     print(
                         "[red]Authentication failed. Check out user [violet][bold]WEAVEL_API_KEY[/bold][/violet].[/red]"
                     )
-                    exit()
+                    return
             else:
                 print(f"[red]Error: {response}[/red]")
-                exit()
+                return
         except requests.exceptions.ConnectionError:
             print("[red]Could not connect to the WEAVEL API.[/red]")
         except requests.exceptions.Timeout:

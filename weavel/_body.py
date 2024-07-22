@@ -19,6 +19,7 @@ class IngestionType(str, Enum):
     CaptureSpan = "capture-span"
     CaptureLog = "capture-log"
     CaptureGeneration = "capture-generation"
+    CaptureTestObservation = "capture-test-observation"
     UpdateTrace = "update-trace"
     UpdateSpan = "update-span"
     UpdateGeneration = "update-generation"
@@ -200,11 +201,24 @@ class CaptureSpanBody(CaptureObservationBody):
         default=None,
         description="The outputs of the generation. Optional.",
     )
-    test_uuid: Optional[str] = Field(
-        default=None,
-        description="The test UUID for the observation. Optional.",
-    )
 
+class CaptureTestObservationBody(CaptureObservationBody):
+    test_uuid: str = Field(
+        ...,
+        description="The unique identifier for the test.",
+    )
+    dataset_item_uuid: str = Field(
+        ...,
+        description="The unique identifier for the dataset item.",
+    )
+    inputs: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="The inputs of the generation. Optional.",
+    )
+    outputs: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="The outputs of the generation. Optional.",
+    )
 
 class CaptureLogBody(CaptureObservationBody):
     """
@@ -237,10 +251,7 @@ class CaptureGenerationBody(CaptureObservationBody):
         default=None,
         description="The outputs of the generation. Optional.",
     )
-    test_uuid: Optional[str] = Field(
-        default=None,
-        description="The test UUID for the observation. Optional.",
-    )
+
 
 class UpdateTraceBody(BaseRecordBody):
     record_id: str
@@ -256,8 +267,6 @@ class UpdateSpanBody(BaseObservationBody):
     inputs: Optional[Dict[str, Any]] = None
     outputs: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
-    test_uuid: Optional[str] = None
-
 
 
 class UpdateGenerationBody(BaseObservationBody):
@@ -266,7 +275,6 @@ class UpdateGenerationBody(BaseObservationBody):
     inputs: Optional[Dict[str, Any]] = None
     outputs: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
-    test_uuid: Optional[str] = None
 
 
 class IdentifyUserBody(BaseModel):

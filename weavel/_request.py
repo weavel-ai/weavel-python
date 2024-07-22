@@ -14,6 +14,7 @@ from ._body import (
     UpdateSpanBody,
     UpdateGenerationBody,
     IdentifyUserBody,
+    CaptureTestObservationBody
 )
 
 
@@ -107,6 +108,9 @@ class CaptureGenerationRequest(IngestionBody):
     type: Literal[IngestionType.CaptureGeneration] = IngestionType.CaptureGeneration
     body: CaptureGenerationBody
 
+class CaptureTestObservationRequest(IngestionBody):
+    type: Literal[IngestionType.CaptureTestObservation] = IngestionType.CaptureTestObservation
+    body: CaptureTestObservationBody
 
 class UpdateTraceRequest(IngestionBody):
     type: Literal[IngestionType.UpdateTrace] = IngestionType.UpdateTrace
@@ -163,6 +167,7 @@ UnionRequest = Union[
     CaptureSpanRequest,
     CaptureLogRequest,
     CaptureGenerationRequest,
+    CaptureTestObservationRequest,
     UpdateTraceRequest,
     UpdateSpanRequest,
     UpdateGenerationRequest,
