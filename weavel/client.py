@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import os
 from datetime import datetime, timezone
-from typing import Dict, Literal, Optional, Any
+from typing import Dict, List, Literal, Optional, Any, Union
 from uuid import uuid4
 
 from dotenv import load_dotenv
@@ -37,6 +39,8 @@ class Weavel:
         assert self.api_key is not None, "API key not provided."
         self._worker = Worker(self.api_key, base_url=base_url)
         
+        self.testing = False
+
     def session(
         self,
         user_id: Optional[str] = None,
@@ -71,6 +75,9 @@ class Weavel:
             metadata=metadata,
             weavel_client=self._worker
         )
+        if self.testing:
+            return session
+        
         if user_id is not None:
             self._worker.open_session(
                 session_id=session_id,
@@ -86,7 +93,8 @@ class Weavel:
         You can save any user information you know about a user for user_id, such as their email, name, or phone number in dict format.
         Properties will be updated for every call.
         """
-        
+        if self.testing:
+            return
         self._worker.identify_user(user_id, properties)
         
     def trace(
@@ -95,8 +103,8 @@ class Weavel:
         record_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         name: Optional[str] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
     ) -> Trace:
@@ -113,6 +121,7 @@ class Weavel:
             ref_record_id (str, optional): The record ID to reference.
 
         """
+            
         if session_id is None and record_id is None:
             raise ValueError("session_id or record_id must be provided.")
 
@@ -125,16 +134,27 @@ class Weavel:
                 record_id = str(uuid4())
             if created_at is None:
                 created_at = datetime.now(timezone.utc)
-            self._worker.capture_trace(
-                session_id=session_id,
-                record_id=record_id,
-                created_at=created_at,
-                name=name,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                ref_record_id=ref_record_id
-            )
+                
+            if isinstance(inputs, str):
+                inputs = {
+                    "_RAW_VALUE_": inputs
+                }
+            if isinstance(outputs, str):
+                outputs = {
+                    "_RAW_VALUE_": outputs
+                }
+                
+            if not self.testing:
+                self._worker.capture_trace(
+                    session_id=session_id,
+                    record_id=record_id,
+                    created_at=created_at,
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id
+                )
             return Trace(
                 session_id=session_id,
                 record_id=record_id,
@@ -158,8 +178,8 @@ class Weavel:
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         name: Optional[str] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         parent_observation_id: Optional[str] = None,
     ):
@@ -168,7 +188,7 @@ class Weavel:
         # None, Value -> Fetch
         # Value -> Create
         # None, -, Value -> Create
-        
+            
         if not record_id and not observation_id and not parent_observation_id:
             raise ValueError("One of the record_id, observation_id, or parent_observation_id must be provided.")
 
@@ -182,16 +202,27 @@ class Weavel:
                 observation_id = str(uuid4())
             if created_at is None:
                 created_at = datetime.now(timezone.utc)
-            self._worker.capture_span(
-                record_id=record_id,
-                observation_id=observation_id,
-                created_at=created_at,
-                name=name,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                parent_observation_id=parent_observation_id
-            )
+                
+            if isinstance(inputs, str):
+                inputs = {
+                    "_RAW_VALUE_": inputs
+                }
+            if isinstance(outputs, str):
+                outputs = {
+                    "_RAW_VALUE_": outputs
+                }
+                
+            if not self.testing:
+                self._worker.capture_span(
+                    record_id=record_id,
+                    observation_id=observation_id,
+                    created_at=created_at,
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    parent_observation_id=parent_observation_id,
+                )
             return Span(
                 record_id=record_id,
                 observation_id=observation_id,
@@ -231,15 +262,154 @@ class Weavel:
         if created_at is None:
             created_at = datetime.now(timezone.utc)
         
-        self._worker.capture_track_event(
-            session_id=session_id,
-            record_id=record_id,
-            created_at=created_at,
-            name=name,
-            properties=properties,
-            metadata=metadata,
-            ref_record_id=ref_record_id
-        )
+        if not self.testing:
+            self._worker.capture_track_event(
+                session_id=session_id,
+                record_id=record_id,
+                created_at=created_at,
+                name=name,
+                properties=properties,
+                metadata=metadata,
+                ref_record_id=ref_record_id
+            )
+    
+    def test_result(
+        self,
+        created_at: datetime,
+        name: str,
+        test_uuid: str,
+        dataset_item_uuid: str,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+    ):
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+        if self.testing:
+            self._worker.capture_test_observation(
+                created_at=created_at,
+                name=name,
+                test_uuid=test_uuid,
+                dataset_item_uuid=dataset_item_uuid,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata
+            )
+        return
+    
+    def test(
+        self,
+        func: callable,
+        dataset_name: str,
+        tags: Optional[List[str]] = None,
+    ):
+        """Test the function with the dataset.
+        It must be used in the jupyter notebook environment.
+
+        Args:
+            func (callable): The function to test.
+            dataset_name (str): The name of the dataset.
+            tags: (List[str], optional): The tags for the test.
+            mock_inputs (Dict[str, Any], optional): The mock input variables to run the function.
+        """
+        import nest_asyncio
+
+        nest_asyncio.apply()
+
+        # fetch dataset from server 
+        datasets: List[Dict[str, Any]] = self._worker.get_dataset(dataset_name)
+        
+        if not datasets:
+            raise ValueError(f"Dataset {dataset_name} not found.")
+        
+        # create test instance in database 
+        test_uuid = str(uuid4())
+        self._worker.create_test(test_uuid, dataset_name, tags)
+                
+        self.testing = True
+        self._worker.testing = True
+        
+        def _runner(func: callable, dataset_item: Dict, dataset_item_uuid: str, test_uuid: str):
+            # run the function and capture the result
+            if "_RAW_VALUE_" in dataset_item:
+                result = func(dataset_item["_RAW_VALUE_"])
+            else:
+                result = func(**dataset_item)
+            # if result is not Dict, convert it to Dict
+            if isinstance(result, str):
+                result = {
+                    "_RAW_VALUE_": result
+                }
+            elif not isinstance(result, dict):
+                result = {
+                    "_RAW_VALUE_": str(result)
+                }
+            
+            self.test_result(
+                created_at=datetime.now(timezone.utc),
+                name=dataset_name,
+                test_uuid=test_uuid,
+                dataset_item_uuid=dataset_item_uuid,
+                inputs=dataset_item,
+                outputs=result
+            )
+        
+        async def _arunner(func: callable, dataset_item: Dict, dataset_item_uuid: str, test_uuid: str):
+            if "_RAW_VALUE_" in dataset_item:
+                result = await func(dataset_item["_RAW_VALUE_"])
+            else:
+                result = await func(**dataset_item)
+                
+            if isinstance(result, str):
+                result = {
+                    "_RAW_VALUE_": result
+                }
+            elif not isinstance(result, dict):
+                result = {
+                    "_RAW_VALUE_": str(result)
+                }
+            
+            self.test_result(
+                created_at=datetime.now(timezone.utc),
+                name=dataset_name,
+                test_uuid=test_uuid,
+                dataset_item_uuid=dataset_item_uuid,
+                inputs=dataset_item,
+                outputs=result
+            )
+                    
+        async def run_async(func, dataset):
+            coros = [
+                _arunner(func, data["inputs"], data["uuid"], test_uuid) for data in dataset
+            ]
+            return await asyncio.gather(*coros)
+        
+        def run_threaded(func, dataset):
+            with ThreadPoolExecutor() as executor:
+                futures = [
+                    executor.submit(_runner, func, data["inputs"], data["uuid"], test_uuid) for data in dataset
+                ]
+                return [future.result() for future in futures]
+        
+        print("Testing...")
+        if asyncio.iscoroutinefunction(func):
+            asyncio.run(run_async(func, datasets))
+        else:
+            run_threaded(func, datasets)
+            
+        print("Test finished. Start Logging...")
+        
+        self._worker.testing = False
+        self.testing = False
+        
+        self._worker.flush()
+        print("Test completed.")
 
     def close(self):
         """Close the client connection."""

@@ -19,6 +19,7 @@ from weavel._request import (
     UpdateTraceRequest,
     UpdateSpanRequest,
     UpdateGenerationRequest,
+    CaptureTestObservationRequest,
     UnionRequest
 )
 from weavel._body import (
@@ -33,6 +34,7 @@ from weavel._body import (
     UpdateSpanBody,
     UpdateGenerationBody,
     IdentifyUserBody,
+    CaptureTestObservationBody,
 )
     
 from weavel._constants import BACKEND_SERVER_URL
@@ -70,6 +72,8 @@ class Worker:
             self._thread = Thread(target=self.consume_buffer, daemon=True)
             self._thread.start()
             self.is_initialized = True
+            
+            self.testing = False
 
     def open_session(
         self,
@@ -83,22 +87,23 @@ class Worker:
         Returns:
             The session id.
         """
-        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
-            created_at = created_at.astimezone(timezone.utc)
-        else:
-            created_at = created_at
+        if not self.testing:
+            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+                created_at = created_at.astimezone(timezone.utc)
+            else:
+                created_at = created_at
 
-        # add task to buffer
-        request = CaptureSessionRequest(
-            body=CaptureSessionBody(
-                user_id=user_id,
-                session_id=session_id,
-                created_at=created_at.isoformat(),
-                metadata=metadata,
+            # add task to buffer
+            request = CaptureSessionRequest(
+                body=CaptureSessionBody(
+                    user_id=user_id,
+                    session_id=session_id,
+                    created_at=created_at.isoformat(),
+                    metadata=metadata,
+                )
             )
-        )
 
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
 
         return
     
@@ -113,14 +118,15 @@ class Worker:
         Returns:
             None
         """
-        request = IdentifyUserRequest(
-            body=IdentifyUserBody(
-                user_id=user_id,
-                properties=properties,
-                created_at=datetime.now(timezone.utc).isoformat()
+        if not self.testing:
+            request = IdentifyUserRequest(
+                body=IdentifyUserBody(
+                    user_id=user_id,
+                    properties=properties,
+                    created_at=datetime.now(timezone.utc).isoformat()
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
 
         return
     
@@ -134,23 +140,24 @@ class Worker:
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
-            created_at = created_at.astimezone(timezone.utc)
-        else:
-            created_at = created_at
-            
-        request = CaptureMessageRequest(
-            body=CaptureMessageBody(
-                session_id=session_id,
-                record_id=record_id,
-                created_at=created_at.isoformat(),
-                role=role,
-                content=content,
-                metadata=metadata,
-                ref_record_id=ref_record_id,
+        if not self.testing:
+            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+                created_at = created_at.astimezone(timezone.utc)
+            else:
+                created_at = created_at
+                
+            request = CaptureMessageRequest(
+                body=CaptureMessageBody(
+                    session_id=session_id,
+                    record_id=record_id,
+                    created_at=created_at.isoformat(),
+                    role=role,
+                    content=content,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def capture_track_event(
@@ -163,23 +170,24 @@ class Worker:
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
-            created_at = created_at.astimezone(timezone.utc)
-        else:
-            created_at = created_at
-            
-        request = CaptureTrackEventRequest(
-            body=CaptureTrackEventBody(
-                session_id=session_id,
-                record_id=record_id,
-                created_at=created_at.isoformat(),
-                name=name,
-                properties=properties,
-                metadata=metadata,
-                ref_record_id=ref_record_id,
+        if not self.testing:
+            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+                created_at = created_at.astimezone(timezone.utc)
+            else:
+                created_at = created_at
+                
+            request = CaptureTrackEventRequest(
+                body=CaptureTrackEventBody(
+                    session_id=session_id,
+                    record_id=record_id,
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    properties=properties,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def capture_trace( 
@@ -188,51 +196,71 @@ class Worker:
         record_id: str,
         created_at: datetime,
         name: str,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None, 
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None, 
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
-            created_at = created_at.astimezone(timezone.utc)
-        else:
-            created_at = created_at
-            
-        request = CaptureTraceRequest(
-            body=CaptureTraceBody(
-                session_id=session_id,
-                record_id=record_id,
-                created_at=created_at.isoformat(),
-                name=name,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                ref_record_id=ref_record_id,
+        if not self.testing:
+            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+                created_at = created_at.astimezone(timezone.utc)
+            else:
+                created_at = created_at
+                
+            if isinstance(inputs, str):
+                inputs = {
+                    "_RAW_VALUE_": inputs
+                }
+            if isinstance(outputs, str):
+                outputs = {
+                    "_RAW_VALUE_": outputs
+                }
+                
+            request = CaptureTraceRequest(
+                body=CaptureTraceBody(
+                    session_id=session_id,
+                    record_id=record_id,
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def update_trace(
         self,
         record_id: str,
         ended_at: Optional[datetime] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None, 
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None, 
         metadata: Optional[Dict[str, str]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        request = UpdateTraceRequest(
-            body=UpdateTraceBody(
-                record_id=record_id,
-                ended_at=ended_at.isoformat() if ended_at else None,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                ref_record_id=ref_record_id,
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+            
+        if not self.testing:
+            request = UpdateTraceRequest(
+                body=UpdateTraceBody(
+                    record_id=record_id,
+                    ended_at=ended_at.isoformat() if ended_at else None,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    ref_record_id=ref_record_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def capture_span(
@@ -241,46 +269,65 @@ class Worker:
         observation_id: str,
         created_at: datetime,
         name: str,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        request = CaptureSpanRequest(
-            body=CaptureSpanBody(
-                record_id=record_id,
-                observation_id=observation_id,
-                created_at=created_at.isoformat(),
-                name=name,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                parent_observation_id=parent_observation_id,
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+        if not self.testing:
+            request = CaptureSpanRequest(
+                body=CaptureSpanBody(
+                    record_id=record_id,
+                    observation_id=observation_id,
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    parent_observation_id=parent_observation_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def update_span(
         self,
         observation_id: str,
         ended_at: Optional[datetime] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        request = UpdateSpanRequest(
-            body=UpdateSpanBody(
-                observation_id=observation_id,
-                ended_at=ended_at.isoformat() if ended_at else None,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                parent_observation_id=parent_observation_id,
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+            
+        if not self.testing:
+            request = UpdateSpanRequest(
+                body=UpdateSpanBody(
+                    observation_id=observation_id,
+                    ended_at=ended_at.isoformat() if ended_at else None,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    parent_observation_id=parent_observation_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def capture_log(
@@ -293,18 +340,19 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        request = CaptureLogRequest(
-            body=CaptureLogBody(
-                record_id=record_id,
-                observation_id=observation_id,
-                created_at=created_at.isoformat(),
-                name=name,
-                value=value,
-                metadata=metadata,
-                parent_observation_id=parent_observation_id,
+        if not self.testing:
+            request = CaptureLogRequest(
+                body=CaptureLogBody(
+                    record_id=record_id,
+                    observation_id=observation_id,
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    value=value,
+                    metadata=metadata,
+                    parent_observation_id=parent_observation_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def capture_generation(
@@ -313,48 +361,134 @@ class Worker:
         observation_id: str,
         created_at: datetime,
         name: str,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        request = CaptureGenerationRequest(
-            body=CaptureGenerationBody(
-                record_id=record_id,
-                observation_id=observation_id,
-                created_at=created_at.isoformat(),
-                name=name,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                parent_observation_id=parent_observation_id,
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+        if not self.testing:
+            request = CaptureGenerationRequest(
+                body=CaptureGenerationBody(
+                    record_id=record_id,
+                    observation_id=observation_id,
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    parent_observation_id=parent_observation_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
         return
     
     def update_generation(
         self,
         observation_id: str,
         ended_at: Optional[datetime] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        request = UpdateGenerationRequest(
-            body=UpdateGenerationBody(
-                observation_id=observation_id,
-                ended_at=ended_at.isoformat() if ended_at else None,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-                parent_observation_id=parent_observation_id,
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+        if not self.testing:
+            request = UpdateGenerationRequest(
+                body=UpdateGenerationBody(
+                    observation_id=observation_id,
+                    ended_at=ended_at.isoformat() if ended_at else None,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    parent_observation_id=parent_observation_id,
+                )
             )
-        )
-        self.buffer_storage.push(request)
+            self.buffer_storage.push(request)
+        return
+    
+    def capture_test_observation(
+        self,
+        created_at: datetime,
+        name: str,
+        test_uuid: str,
+        dataset_item_uuid: str,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+    ):
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+        if self.testing:
+            request = CaptureTestObservationRequest(
+                body=CaptureTestObservationBody(
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    test_uuid=test_uuid,
+                    dataset_item_uuid=dataset_item_uuid,
+                )
+            )
+            self.buffer_storage.push(request)
         return
 
+    def get_dataset(
+        self,
+        dataset_name: str,
+    ) -> List[Dict[str, Any]]:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/test/{dataset_name}",
+            method="GET",
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to get dataset: {response.text}")
+        
+    def create_test(
+        self,
+        test_uuid: str,
+        dataset_name: str,
+        tags: Optional[List[str]] = None,
+    ) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/test",
+            method="POST",
+            json={
+                "test_uuid": test_uuid,
+                "dataset_name": dataset_name,
+                "tags": tags,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to create test: {response.text}")
+        
     def send_requests(
         self,
         requests: List[

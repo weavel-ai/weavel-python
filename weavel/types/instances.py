@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Any, Literal
+from typing import Dict, Optional, Any, Literal, Union
 from uuid import uuid4
 from datetime import datetime, timezone
 from pydantic import Field
@@ -43,14 +43,23 @@ class Generation(Observation):
     def update(
         self,
         ended_at: Optional[datetime] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
         
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+            
         self.weavel_client.update_generation(
             observation_id=self.observation_id,
             ended_at=ended_at,
@@ -105,8 +114,8 @@ class Span(Observation):
     def generation(
         self,
         name: str,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -115,6 +124,15 @@ class Span(Observation):
             observation_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)   
+            
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
             
         generation = Generation(
             record_id=self.record_id,
@@ -142,8 +160,8 @@ class Span(Observation):
     def span(
         self,
         name: str,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -153,6 +171,14 @@ class Span(Observation):
         if created_at is None:
             created_at = datetime.now(timezone.utc)
             
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
         span = Span(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -193,14 +219,23 @@ class Span(Observation):
     def update(
         self,
         ended_at: Optional[datetime] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
-        
+            
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+            
         self.weavel_client.update_span(
             observation_id=self.observation_id,
             ended_at=ended_at,
@@ -273,8 +308,8 @@ class Trace(Record):
     def generation(
         self,
         name: str,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -283,7 +318,16 @@ class Trace(Record):
             observation_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-
+            
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+            
         generation = Generation(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -308,8 +352,8 @@ class Trace(Record):
     def span(
         self,
         name: str,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -318,6 +362,15 @@ class Trace(Record):
             observation_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
+            
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
             
         span = Span(
             record_id=self.record_id,
@@ -357,14 +410,23 @@ class Trace(Record):
     def update(
         self,
         ended_at: Optional[datetime] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         ref_record_id: Optional[str] = None,
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
         
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
+
         self.weavel_client.update_trace(
             record_id=self.record_id,
             ended_at=ended_at,
@@ -422,8 +484,8 @@ class Session(BaseModel):
     def trace(
         self,
         name: str,
-        inputs: Optional[Dict[str, Any]] = None,
-        outputs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[Dict[str, Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         record_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
@@ -433,6 +495,15 @@ class Session(BaseModel):
             record_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
+            
+        if isinstance(inputs, str):
+            inputs = {
+                "_RAW_VALUE_": inputs
+            }
+        if isinstance(outputs, str):
+            outputs = {
+                "_RAW_VALUE_": outputs
+            }
             
         trace = Trace(
             session_id=self.session_id,
