@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Any, Literal, Union
+from typing import Dict, List, Optional, Any, Literal, Union
 from uuid import uuid4
 from datetime import datetime, timezone
 from pydantic import Field
@@ -6,19 +6,22 @@ from pydantic import Field
 from weavel._request import BaseModel
 from weavel._worker import Worker as WeavelWorker
 
-
 class Observation(BaseModel):
     record_id: Optional[str] = None
     observation_id: str = Field(default_factory=lambda: str(uuid4()))
-    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: Optional[datetime] = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
     name: Optional[str] = None
     metadata: Optional[Dict[str, str]] = None
     parent_observation_id: Optional[str] = None
     weavel_client: WeavelWorker
 
+
 class Log(Observation):
     type: Literal["log"] = "log"
     value: Optional[str] = None
+
 
 class Generation(Observation):
     type: Literal["generation"] = "generation"
@@ -32,14 +35,14 @@ class Generation(Observation):
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
-        
+
         self.weavel_client.update_generation(
             observation_id=self.observation_id,
             ended_at=ended_at,
         )
         self.ended_at = ended_at
         return
-    
+
     def update(
         self,
         ended_at: Optional[datetime] = None,
@@ -50,16 +53,12 @@ class Generation(Observation):
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
-        
+
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
-            
+            outputs = {"_RAW_VALUE_": outputs}
+
         self.weavel_client.update_generation(
             observation_id=self.observation_id,
             ended_at=ended_at,
@@ -71,12 +70,13 @@ class Generation(Observation):
         self.ended_at = ended_at
         return
 
+
 class Span(Observation):
     type: Literal["span"] = "span"
     inputs: Optional[Dict[str, Any]] = None
     outputs: Optional[Dict[str, Any]] = None
     ended_at: Optional[datetime] = None
-    
+
     def log(
         self,
         name: str,
@@ -110,7 +110,7 @@ class Span(Observation):
             parent_observation_id=self.observation_id,
         )
         return log
-    
+
     def generation(
         self,
         name: str,
@@ -123,17 +123,13 @@ class Span(Observation):
         if observation_id is None:
             observation_id = str(uuid4())
         if created_at is None:
-            created_at = datetime.now(timezone.utc)   
-            
+            created_at = datetime.now(timezone.utc)
+
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
-            
+            outputs = {"_RAW_VALUE_": outputs}
+
         generation = Generation(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -156,7 +152,7 @@ class Span(Observation):
             parent_observation_id=self.observation_id,
         )
         return generation
-    
+
     def span(
         self,
         name: str,
@@ -170,15 +166,11 @@ class Span(Observation):
             observation_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-            
+
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
+            outputs = {"_RAW_VALUE_": outputs}
         span = Span(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -201,21 +193,21 @@ class Span(Observation):
             parent_observation_id=self.observation_id,
         )
         return span
-    
+
     def end(
         self,
         ended_at: Optional[datetime] = None,
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
-        
+
         self.weavel_client.update_span(
             observation_id=self.observation_id,
             ended_at=ended_at,
         )
         self.ended_at = ended_at
         return
-    
+
     def update(
         self,
         ended_at: Optional[datetime] = None,
@@ -226,16 +218,12 @@ class Span(Observation):
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
-            
+
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
-            
+            outputs = {"_RAW_VALUE_": outputs}
+
         self.weavel_client.update_span(
             observation_id=self.observation_id,
             ended_at=ended_at,
@@ -246,6 +234,7 @@ class Span(Observation):
         )
         self.ended_at = ended_at
         return
+
 
 class Record(BaseModel):
     session_id: Optional[str] = None
@@ -261,10 +250,12 @@ class Message(Record):
     role: Literal["user", "assistant", "system"]
     content: str
 
+
 class TrackEvent(Record):
     type: Literal["track_event"] = "track_event"
     name: str
-    properties: Optional[Dict[str, str]] = None 
+    properties: Optional[Dict[str, str]] = None
+
 
 class Trace(Record):
     type: Literal["trace"] = "trace"
@@ -272,7 +263,7 @@ class Trace(Record):
     inputs: Optional[Dict[str, Any]] = None
     outputs: Optional[Dict[str, Any]] = None
     ended_at: Optional[datetime] = None
-    
+
     def log(
         self,
         name: str,
@@ -285,7 +276,7 @@ class Trace(Record):
             observation_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-            
+
         log = Log(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -304,7 +295,7 @@ class Trace(Record):
             value=value,
         )
         return log
-        
+
     def generation(
         self,
         name: str,
@@ -318,16 +309,12 @@ class Trace(Record):
             observation_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-            
+
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
-            
+            outputs = {"_RAW_VALUE_": outputs}
+
         generation = Generation(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -348,7 +335,7 @@ class Trace(Record):
             metadata=metadata,
         )
         return generation
-        
+
     def span(
         self,
         name: str,
@@ -362,16 +349,12 @@ class Trace(Record):
             observation_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-            
+
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
-            
+            outputs = {"_RAW_VALUE_": outputs}
+
         span = Span(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -399,14 +382,14 @@ class Trace(Record):
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
-        
+
         self.weavel_client.update_trace(
             record_id=self.record_id,
             ended_at=ended_at,
         )
         self.ended_at = ended_at
         return
-    
+
     def update(
         self,
         ended_at: Optional[datetime] = None,
@@ -417,15 +400,11 @@ class Trace(Record):
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
-        
+
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
+            outputs = {"_RAW_VALUE_": outputs}
 
         self.weavel_client.update_trace(
             record_id=self.record_id,
@@ -438,14 +417,16 @@ class Trace(Record):
         self.ended_at = ended_at
         return
 
+
 class Session(BaseModel):
     """Session object."""
+
     user_id: Optional[str]
     session_id: str
     created_at: datetime
     metadata: Optional[Dict[str, str]] = None
     weavel_client: WeavelWorker
-    
+
     def message(
         self,
         role: Literal["user", "assistant", "system"],
@@ -459,7 +440,7 @@ class Session(BaseModel):
             record_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-            
+
         message = Message(
             session_id=self.session_id,
             record_id=record_id,
@@ -480,7 +461,7 @@ class Session(BaseModel):
             content=content,
         )
         return message
-    
+
     def trace(
         self,
         name: str,
@@ -495,16 +476,12 @@ class Session(BaseModel):
             record_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-            
+
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
-            
+            outputs = {"_RAW_VALUE_": outputs}
+
         trace = Trace(
             session_id=self.session_id,
             record_id=record_id,
@@ -527,7 +504,7 @@ class Session(BaseModel):
             ref_record_id=ref_record_id,
         )
         return trace
-    
+
     def track(
         self,
         name: str,
@@ -541,7 +518,7 @@ class Session(BaseModel):
             record_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-            
+
         track_event = TrackEvent(
             session_id=self.session_id,
             record_id=record_id,
