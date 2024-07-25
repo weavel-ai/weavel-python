@@ -320,32 +320,6 @@ class Weavel:
 
         self._worker.create_dataset_items(dataset_name, items)
 
-    def test_result(
-        self,
-        created_at: datetime,
-        name: str,
-        test_uuid: str,
-        dataset_item_uuid: str,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
-        metadata: Optional[Dict[str, str]] = None,
-    ):
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
-        if self.testing:
-            self._worker.capture_test_observation(
-                created_at=created_at,
-                name=name,
-                test_uuid=test_uuid,
-                dataset_item_uuid=dataset_item_uuid,
-                inputs=inputs,
-                outputs=outputs,
-                metadata=metadata,
-            )
-        return
-
     def test(
         self,
         func: callable,
@@ -396,7 +370,7 @@ class Weavel:
             elif not isinstance(result, dict):
                 result = {"_RAW_VALUE_": str(result)}
 
-            self.test_result(
+            self._worker.capture_test_observation(
                 created_at=datetime.now(timezone.utc),
                 name=dataset_name,
                 test_uuid=test_uuid,
@@ -418,7 +392,7 @@ class Weavel:
             elif not isinstance(result, dict):
                 result = {"_RAW_VALUE_": str(result)}
 
-            self.test_result(
+            self._worker.capture_test_observation(
                 created_at=datetime.now(timezone.utc),
                 name=dataset_name,
                 test_uuid=test_uuid,
