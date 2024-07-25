@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="weavel",
-    version="1.1.0",
+    version="1.2.0",
     packages=find_namespace_packages(),
     entry_points={},
     description="Weavel, natural language analysis Dashboard for LLM Agent",
@@ -41,12 +41,10 @@ setup(
         "weavel",
         "agent",
         "llm",
-        "tools",
-        "llm agent",
-        "collaborative",
-        "dashboard",
-        "user analytics",
-        "agent analytics",
+        "llm evaluation",
+        "llm monitoring",
+        "prompt evaluation",
+        "dataset curation",
         "funnel analytics",
     ],
 )
