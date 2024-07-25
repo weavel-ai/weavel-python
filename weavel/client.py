@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from itertools import islice
 import os
 from datetime import datetime, timezone
+import time
 from typing import Dict, List, Literal, Optional, Any, Union
 from uuid import uuid4
 
@@ -348,6 +350,8 @@ class Weavel:
         self,
         func: callable,
         dataset_name: str,
+        batch_size: int = 50,
+        delay: int = 10,
         tags: Optional[List[str]] = None,
     ):
         """Test the function with the dataset.
@@ -357,6 +361,8 @@ class Weavel:
             func (callable): The function to test.
             dataset_name (str): The name of the dataset.
             tags: (List[str], optional): The tags for the test.
+            batch_size (int, optional): The batch size for the test. Default is 50.
+            delay (int, optional): The delay (in seconds) between each batch. Default is 10.
             mock_inputs (Dict[str, Any], optional): The mock input variables to run the function.
         """
         import nest_asyncio
@@ -422,21 +428,30 @@ class Weavel:
             )
 
         async def run_async(func, dataset):
-            coros = [
-                _arunner(func, data["inputs"], data["uuid"], test_uuid)
-                for data in dataset
-            ]
-            return await asyncio.gather(*coros)
+            for i in range(0, len(dataset), batch_size):
+                batch = list(islice(dataset, i, i + batch_size))
+                coros = [
+                    _arunner(func, data["inputs"], data["uuid"], test_uuid)
+                    for data in batch
+                ]
+                await asyncio.gather(*coros)
+                if i + batch_size < len(dataset):
+                    await asyncio.sleep(delay)
 
         def run_threaded(func, dataset):
             with ThreadPoolExecutor() as executor:
-                futures = [
-                    executor.submit(
-                        _runner, func, data["inputs"], data["uuid"], test_uuid
-                    )
-                    for data in dataset
-                ]
-                return [future.result() for future in futures]
+                for i in range(0, len(dataset), batch_size):
+                    batch = list(islice(dataset, i, i + batch_size))
+                    futures = [
+                        executor.submit(
+                            _runner, func, data["inputs"], data["uuid"], test_uuid
+                        )
+                        for data in batch
+                    ]
+                    for future in futures:
+                        future.result()
+                    if i + batch_size < len(dataset):
+                        time.sleep(delay)
 
         print("Testing...")
         if asyncio.iscoroutinefunction(func):
