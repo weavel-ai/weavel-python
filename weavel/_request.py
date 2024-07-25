@@ -14,7 +14,7 @@ from ._body import (
     UpdateSpanBody,
     UpdateGenerationBody,
     IdentifyUserBody,
-    CaptureTestObservationBody
+    CaptureTestObservationBody,
 )
 
 

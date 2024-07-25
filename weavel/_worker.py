@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -20,7 +19,7 @@ from weavel._request import (
     UpdateSpanRequest,
     UpdateGenerationRequest,
     CaptureTestObservationRequest,
-    UnionRequest
+    UnionRequest,
 )
 from weavel._body import (
     CaptureSessionBody,
@@ -36,12 +35,12 @@ from weavel._body import (
     IdentifyUserBody,
     CaptureTestObservationBody,
 )
-    
+
 from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
 from weavel._api_client import APIClient
 from weavel.utils import logger
-
+from weavel.types.types import DatasetItems, DatasetDetails
 
 class Worker:
     _instance = None
@@ -51,11 +50,7 @@ class Worker:
             cls._instance = super(Worker, cls).__new__(cls)
         return cls._instance
 
-    def __init__(
-        self,
-        api_key: str,
-        base_url: Optional[str] = None
-    ) -> None:
+    def __init__(self, api_key: str, base_url: Optional[str] = None) -> None:
         if not hasattr(self, "is_initialized"):
             self.api_key = api_key
             self.endpoint = BACKEND_SERVER_URL if not base_url else base_url
@@ -72,7 +67,7 @@ class Worker:
             self._thread = Thread(target=self.consume_buffer, daemon=True)
             self._thread.start()
             self.is_initialized = True
-            
+
             self.testing = False
 
     def open_session(
@@ -88,7 +83,10 @@ class Worker:
             The session id.
         """
         if not self.testing:
-            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+            if (
+                created_at.tzinfo is None
+                or created_at.tzinfo.utcoffset(created_at) is None
+            ):
                 created_at = created_at.astimezone(timezone.utc)
             else:
                 created_at = created_at
@@ -106,7 +104,7 @@ class Worker:
             self.buffer_storage.push(request)
 
         return
-    
+
     def identify_user(self, user_id: str, properties: Dict) -> None:
         """
         Identifies a user with the given properties.
@@ -123,13 +121,13 @@ class Worker:
                 body=IdentifyUserBody(
                     user_id=user_id,
                     properties=properties,
-                    created_at=datetime.now(timezone.utc).isoformat()
+                    created_at=datetime.now(timezone.utc).isoformat(),
                 )
             )
             self.buffer_storage.push(request)
 
         return
-    
+
     def capture_message(
         self,
         session_id: str,
@@ -141,11 +139,14 @@ class Worker:
         ref_record_id: Optional[str] = None,
     ):
         if not self.testing:
-            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+            if (
+                created_at.tzinfo is None
+                or created_at.tzinfo.utcoffset(created_at) is None
+            ):
                 created_at = created_at.astimezone(timezone.utc)
             else:
                 created_at = created_at
-                
+
             request = CaptureMessageRequest(
                 body=CaptureMessageBody(
                     session_id=session_id,
@@ -159,7 +160,7 @@ class Worker:
             )
             self.buffer_storage.push(request)
         return
-    
+
     def capture_track_event(
         self,
         session_id: str,
@@ -171,11 +172,14 @@ class Worker:
         ref_record_id: Optional[str] = None,
     ):
         if not self.testing:
-            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+            if (
+                created_at.tzinfo is None
+                or created_at.tzinfo.utcoffset(created_at) is None
+            ):
                 created_at = created_at.astimezone(timezone.utc)
             else:
                 created_at = created_at
-                
+
             request = CaptureTrackEventRequest(
                 body=CaptureTrackEventBody(
                     session_id=session_id,
@@ -189,33 +193,32 @@ class Worker:
             )
             self.buffer_storage.push(request)
         return
-    
-    def capture_trace( 
-        self,  
+
+    def capture_trace(
+        self,
         session_id: str,
         record_id: str,
         created_at: datetime,
         name: str,
         inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None, 
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
     ):
         if not self.testing:
-            if created_at.tzinfo is None or created_at.tzinfo.utcoffset(created_at) is None:
+            if (
+                created_at.tzinfo is None
+                or created_at.tzinfo.utcoffset(created_at) is None
+            ):
                 created_at = created_at.astimezone(timezone.utc)
             else:
                 created_at = created_at
-                
+
             if isinstance(inputs, str):
-                inputs = {
-                    "_RAW_VALUE_": inputs
-                }
+                inputs = {"_RAW_VALUE_": inputs}
             if isinstance(outputs, str):
-                outputs = {
-                    "_RAW_VALUE_": outputs
-                }
-                
+                outputs = {"_RAW_VALUE_": outputs}
+
             request = CaptureTraceRequest(
                 body=CaptureTraceBody(
                     session_id=session_id,
@@ -230,25 +233,21 @@ class Worker:
             )
             self.buffer_storage.push(request)
         return
-    
+
     def update_trace(
         self,
         record_id: str,
         ended_at: Optional[datetime] = None,
         inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None, 
+        outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         ref_record_id: Optional[str] = None,
     ):
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
-            
+            outputs = {"_RAW_VALUE_": outputs}
+
         if not self.testing:
             request = UpdateTraceRequest(
                 body=UpdateTraceBody(
@@ -262,7 +261,7 @@ class Worker:
             )
             self.buffer_storage.push(request)
         return
-    
+
     def capture_span(
         self,
         record_id: str,
@@ -275,13 +274,9 @@ class Worker:
         parent_observation_id: Optional[str] = None,
     ):
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
+            outputs = {"_RAW_VALUE_": outputs}
         if not self.testing:
             request = CaptureSpanRequest(
                 body=CaptureSpanBody(
@@ -297,7 +292,7 @@ class Worker:
             )
             self.buffer_storage.push(request)
         return
-    
+
     def update_span(
         self,
         observation_id: str,
@@ -308,14 +303,10 @@ class Worker:
         parent_observation_id: Optional[str] = None,
     ):
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
-            
+            outputs = {"_RAW_VALUE_": outputs}
+
         if not self.testing:
             request = UpdateSpanRequest(
                 body=UpdateSpanBody(
@@ -329,7 +320,7 @@ class Worker:
             )
             self.buffer_storage.push(request)
         return
-    
+
     def capture_log(
         self,
         record_id: str,
@@ -354,7 +345,7 @@ class Worker:
             )
             self.buffer_storage.push(request)
         return
-    
+
     def capture_generation(
         self,
         record_id: str,
@@ -367,13 +358,9 @@ class Worker:
         parent_observation_id: Optional[str] = None,
     ):
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
+            outputs = {"_RAW_VALUE_": outputs}
         if not self.testing:
             request = CaptureGenerationRequest(
                 body=CaptureGenerationBody(
@@ -389,7 +376,7 @@ class Worker:
             )
             self.buffer_storage.push(request)
         return
-    
+
     def update_generation(
         self,
         observation_id: str,
@@ -400,13 +387,9 @@ class Worker:
         parent_observation_id: Optional[str] = None,
     ):
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
+            outputs = {"_RAW_VALUE_": outputs}
         if not self.testing:
             request = UpdateGenerationRequest(
                 body=UpdateGenerationBody(
@@ -420,7 +403,7 @@ class Worker:
             )
             self.buffer_storage.push(request)
         return
-    
+
     def capture_test_observation(
         self,
         created_at: datetime,
@@ -432,13 +415,9 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
     ):
         if isinstance(inputs, str):
-            inputs = {
-                "_RAW_VALUE_": inputs
-            }
+            inputs = {"_RAW_VALUE_": inputs}
         if isinstance(outputs, str):
-            outputs = {
-                "_RAW_VALUE_": outputs
-            }
+            outputs = {"_RAW_VALUE_": outputs}
         if self.testing:
             request = CaptureTestObservationRequest(
                 body=CaptureTestObservationBody(
@@ -454,7 +433,7 @@ class Worker:
             self.buffer_storage.push(request)
         return
 
-    def get_dataset(
+    def get_test_dataset(
         self,
         dataset_name: str,
     ) -> List[Dict[str, Any]]:
@@ -468,7 +447,59 @@ class Worker:
             return response.json()
         else:
             raise Exception(f"Failed to get dataset: {response.text}")
+
+    def create_dataset(
+        self,
+        dataset_name: str,
+        description: Optional[str] = None,
+    ) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/dataset",
+            method="POST",
+            json={
+                "dataset_name": dataset_name,
+                "description": description,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to create dataset: {response.text}")
+
+    def create_dataset_items(
+        self,
+        dataset_name: str,
+        items: List[DatasetItems],
+    ) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/dataset_items/batch",
+            method="POST",
+            json={
+                "dataset_name": dataset_name,
+                "items": items,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to create dataset items: {response.text}")
+
+    def fetch_dataset(
+        self,
+        dataset_name: str,
+    ) -> DatasetDetails:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/dataset/{dataset_name}",
+            method="GET",
+        )
         
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to get dataset: {response.text}")
+
     def create_test(
         self,
         test_uuid: str,
@@ -488,12 +519,10 @@ class Worker:
         )
         if response.status_code != 200:
             raise Exception(f"Failed to create test: {response.text}")
-        
+
     def send_requests(
         self,
-        requests: List[
-            UnionRequest
-        ],
+        requests: List[UnionRequest],
     ):
         """
         Sends a batch of requests to the API endpoint.

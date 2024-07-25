@@ -1,15 +1,16 @@
-from pydantic import BaseModel as PydanticBaseModel, Field, validator
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, Literal
+from h11 import Data
+from pydantic import BaseModel as PydanticBaseModel, Field
+from typing import Any, Dict, Optional, Literal, Union
 from enum import Enum
-from uuid import UUID
-from datetime import datetime, date
 
 
 class BaseModel(PydanticBaseModel):
     """Extended Pydantic BaseModel"""
+
     class Config:
         arbitrary_types_allowed = True
-      
+
+
 class IngestionType(str, Enum):
     CaptureSession = "capture-session"
     IdentifyUser = "identify-user"
@@ -23,6 +24,7 @@ class IngestionType(str, Enum):
     UpdateTrace = "update-trace"
     UpdateSpan = "update-span"
     UpdateGeneration = "update-generation"
+
 
 class IngestionBody(BaseModel):
     type: IngestionType
@@ -105,7 +107,9 @@ class CaptureSessionBody(BaseModel):
         created_at (str, optional): The datetime when the session was opened. Optional.
     """
 
-    user_id: Optional[str] = Field(default=None, description="The unique identifier for the user.")
+    user_id: Optional[str] = Field(
+        default=None, description="The unique identifier for the user."
+    )
     session_id: Optional[str] = Field(
         default=None, description="The unique identifier for the session data."
     )
@@ -117,6 +121,7 @@ class CaptureSessionBody(BaseModel):
         default=None,
         description="The datetime when the session was opened. Optional.",
     )
+
 
 class CaptureRecordBody(BaseRecordBody):
     session_id: str
@@ -181,7 +186,6 @@ class CaptureTraceBody(CaptureRecordBody):
         default=None,
         description="The outputs of the trace. Optional.",
     )
-    
 
 
 class CaptureSpanBody(CaptureObservationBody):
@@ -202,6 +206,7 @@ class CaptureSpanBody(CaptureObservationBody):
         description="The outputs of the generation. Optional.",
     )
 
+
 class CaptureTestObservationBody(CaptureObservationBody):
     test_uuid: str = Field(
         ...,
@@ -219,6 +224,7 @@ class CaptureTestObservationBody(CaptureObservationBody):
         default=None,
         description="The outputs of the generation. Optional.",
     )
+
 
 class CaptureLogBody(CaptureObservationBody):
     """
