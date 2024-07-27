@@ -40,7 +40,8 @@ from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
 from weavel._api_client import APIClient
 from weavel.utils import logger
-from weavel.types.types import DatasetItems, DatasetDetails
+from weavel.types.types import DatasetItem, Dataset
+
 
 class Worker:
     _instance = None
@@ -214,10 +215,10 @@ class Worker:
             else:
                 created_at = created_at
 
-            if isinstance(inputs, str):
-                inputs = {"_RAW_VALUE_": inputs}
-            if isinstance(outputs, str):
-                outputs = {"_RAW_VALUE_": outputs}
+            # if isinstance(inputs, str):
+            #     inputs = {"_RAW_VALUE_": inputs}
+            # if isinstance(outputs, str):
+            #     outputs = {"_RAW_VALUE_": outputs}
 
             request = CaptureTraceRequest(
                 body=CaptureTraceBody(
@@ -243,10 +244,10 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
+        # if isinstance(inputs, str):
+        #     inputs = {"_RAW_VALUE_": inputs}
+        # if isinstance(outputs, str):
+        #     outputs = {"_RAW_VALUE_": outputs}
 
         if not self.testing:
             request = UpdateTraceRequest(
@@ -273,10 +274,10 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
+        # if isinstance(inputs, str):
+        #     inputs = {"_RAW_VALUE_": inputs}
+        # if isinstance(outputs, str):
+        #     outputs = {"_RAW_VALUE_": outputs}
         if not self.testing:
             request = CaptureSpanRequest(
                 body=CaptureSpanBody(
@@ -302,10 +303,10 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
+        # if isinstance(inputs, str):
+        #     inputs = {"_RAW_VALUE_": inputs}
+        # if isinstance(outputs, str):
+        #     outputs = {"_RAW_VALUE_": outputs}
 
         if not self.testing:
             request = UpdateSpanRequest(
@@ -357,10 +358,10 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
+        # if isinstance(inputs, str):
+        #     inputs = {"_RAW_VALUE_": inputs}
+        # if isinstance(outputs, str):
+        #     outputs = {"_RAW_VALUE_": outputs}
         if not self.testing:
             request = CaptureGenerationRequest(
                 body=CaptureGenerationBody(
@@ -386,10 +387,10 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
+        # if isinstance(inputs, str):
+        #     inputs = {"_RAW_VALUE_": inputs}
+        # if isinstance(outputs, str):
+        #     outputs = {"_RAW_VALUE_": outputs}
         if not self.testing:
             request = UpdateGenerationRequest(
                 body=UpdateGenerationBody(
@@ -414,10 +415,10 @@ class Worker:
         outputs: Optional[Union[Dict[str, Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
     ):
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
+        # if isinstance(inputs, str):
+        #     inputs = {"_RAW_VALUE_": inputs}
+        # if isinstance(outputs, str):
+        #     outputs = {"_RAW_VALUE_": outputs}
         if self.testing:
             request = CaptureTestObservationRequest(
                 body=CaptureTestObservationBody(
@@ -433,33 +434,18 @@ class Worker:
             self.buffer_storage.push(request)
         return
 
-    def get_test_dataset(
-        self,
-        dataset_name: str,
-    ) -> List[Dict[str, Any]]:
-        response = self.api_client.execute(
-            self.api_key,
-            self.endpoint,
-            f"/test/{dataset_name}",
-            method="GET",
-        )
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception(f"Failed to get dataset: {response.text}")
-
     def create_dataset(
         self,
-        dataset_name: str,
+        name: str,
         description: Optional[str] = None,
     ) -> None:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
-            f"/dataset",
+            "/datasets",
             method="POST",
             json={
-                "dataset_name": dataset_name,
+                "name": name,
                 "description": description,
             },
         )
@@ -469,12 +455,12 @@ class Worker:
     def create_dataset_items(
         self,
         dataset_name: str,
-        items: List[DatasetItems],
+        items: List[DatasetItem],
     ) -> None:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
-            f"/dataset_items/batch",
+            "/dataset_items/batch",
             method="POST",
             json={
                 "dataset_name": dataset_name,
@@ -486,17 +472,17 @@ class Worker:
 
     def fetch_dataset(
         self,
-        dataset_name: str,
-    ) -> DatasetDetails:
+        name: str,
+    ) -> Dataset:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
-            f"/dataset/{dataset_name}",
+            f"/datasets/{name}",
             method="GET",
         )
-        
+
         if response.status_code == 200:
-            return response.json()
+            return Dataset(**response.json())
         else:
             raise Exception(f"Failed to get dataset: {response.text}")
 
@@ -509,7 +495,7 @@ class Worker:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
-            f"/test",
+            "/tests",
             method="POST",
             json={
                 "test_uuid": test_uuid,

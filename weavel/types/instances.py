@@ -6,6 +6,7 @@ from pydantic import Field
 from weavel._request import BaseModel
 from weavel._worker import Worker as WeavelWorker
 
+
 class Observation(BaseModel):
     record_id: Optional[str] = None
     observation_id: str = Field(default_factory=lambda: str(uuid4()))
@@ -25,8 +26,8 @@ class Log(Observation):
 
 class Generation(Observation):
     type: Literal["generation"] = "generation"
-    inputs: Optional[Dict[str, Any]]
-    outputs: Optional[Dict[str, Any]] = None
+    inputs: Optional[Union[Dict[str, Any], str]] = None
+    outputs: Optional[Union[Dict[str, Any], str]] = None
     ended_at: Optional[datetime] = None
 
     def end(
@@ -54,11 +55,6 @@ class Generation(Observation):
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
 
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
-
         self.weavel_client.update_generation(
             observation_id=self.observation_id,
             ended_at=ended_at,
@@ -73,8 +69,8 @@ class Generation(Observation):
 
 class Span(Observation):
     type: Literal["span"] = "span"
-    inputs: Optional[Dict[str, Any]] = None
-    outputs: Optional[Dict[str, Any]] = None
+    inputs: Optional[Union[Dict[str, Any], str]] = None
+    outputs: Optional[Union[Dict[str, Any], str]] = None
     ended_at: Optional[datetime] = None
 
     def log(
@@ -125,11 +121,6 @@ class Span(Observation):
         if created_at is None:
             created_at = datetime.now(timezone.utc)
 
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
-
         generation = Generation(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -167,10 +158,6 @@ class Span(Observation):
         if created_at is None:
             created_at = datetime.now(timezone.utc)
 
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
         span = Span(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -218,11 +205,6 @@ class Span(Observation):
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
-
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
 
         self.weavel_client.update_span(
             observation_id=self.observation_id,
@@ -310,11 +292,6 @@ class Trace(Record):
         if created_at is None:
             created_at = datetime.now(timezone.utc)
 
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
-
         generation = Generation(
             record_id=self.record_id,
             observation_id=observation_id,
@@ -349,11 +326,6 @@ class Trace(Record):
             observation_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
 
         span = Span(
             record_id=self.record_id,
@@ -400,11 +372,6 @@ class Trace(Record):
     ) -> None:
         if ended_at is None:
             ended_at = datetime.now(timezone.utc)
-
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
 
         self.weavel_client.update_trace(
             record_id=self.record_id,
@@ -476,11 +443,6 @@ class Session(BaseModel):
             record_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
-
-        if isinstance(inputs, str):
-            inputs = {"_RAW_VALUE_": inputs}
-        if isinstance(outputs, str):
-            outputs = {"_RAW_VALUE_": outputs}
 
         trace = Trace(
             session_id=self.session_id,

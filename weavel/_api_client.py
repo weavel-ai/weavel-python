@@ -94,10 +94,9 @@ class APIClient:
                     print(
                         "[red]Authentication failed. Check out user [violet][bold]WEAVEL_API_KEY[/bold][/violet].[/red]"
                     )
-                    return
             else:
                 print(f"[red]Error: {response}[/red]")
-                return
+            return response
         except requests.exceptions.ConnectionError:
             print("[red]Could not connect to the WEAVEL API.[/red]")
         except requests.exceptions.Timeout:
@@ -118,7 +117,6 @@ class AsyncAPIClient:
     execute(method="GET", params=None, data=None, json=None, **kwargs):
         Executes the API request.
     """
-        
 
     @classmethod
     async def _get_headers(cls, api_key: str) -> Dict:
@@ -130,7 +128,7 @@ class AsyncAPIClient:
         dict
             a dictionary containing the Authorization header
         """
-        
+
         headers = {"Authorization": f"Bearer {api_key}"}
         return headers
 

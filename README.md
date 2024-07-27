@@ -3,7 +3,7 @@
         <img src="https://i.imgur.com/uQ7ulX3.png" title="Logo" style="" />
     </a>
     <h1>Weavel Python SDK</h1>
-    <h3>Automated Analytics for LLM Application</h3>
+    <h3>Performance Testing & Analytics for LLM Applications</h3>
     <div>
         <a href="https://pypi.org/project/weavel" target="_blank">
             <img src="https://img.shields.io/pypi/v/weavel.svg" alt="PyPI Version"/>

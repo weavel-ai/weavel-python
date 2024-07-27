@@ -6,13 +6,13 @@ from itertools import islice
 import os
 from datetime import datetime, timezone
 import time
-from typing import Dict, List, Literal, Optional, Any, Union
+from typing import Callable, Dict, List, Optional, Any, Union
 from uuid import uuid4
 
 from dotenv import load_dotenv
 from weavel._worker import Worker
 from weavel.types.instances import Session, Span, Trace
-from weavel.types.types import DatasetItems
+from weavel.types.types import Dataset, DatasetItem
 
 load_dotenv()
 
@@ -136,11 +136,6 @@ class Weavel:
             if created_at is None:
                 created_at = datetime.now(timezone.utc)
 
-            if isinstance(inputs, str):
-                inputs = {"_RAW_VALUE_": inputs}
-            if isinstance(outputs, str):
-                outputs = {"_RAW_VALUE_": outputs}
-
             if not self.testing:
                 self._worker.capture_trace(
                     session_id=session_id,
@@ -204,11 +199,6 @@ class Weavel:
             if created_at is None:
                 created_at = datetime.now(timezone.utc)
 
-            if isinstance(inputs, str):
-                inputs = {"_RAW_VALUE_": inputs}
-            if isinstance(outputs, str):
-                outputs = {"_RAW_VALUE_": outputs}
-
             if not self.testing:
                 self._worker.capture_span(
                     record_id=record_id,
@@ -269,60 +259,61 @@ class Weavel:
 
     def create_dataset(
         self,
-        dataset_name: str,
+        name: str,
         description: Optional[str] = None,
     ) -> None:
         """Upload a dataset to the Weavel service.
 
         Args:
-            dataset_name (str): The name of the dataset.
+            name (str): The name of the dataset.
             description (str): The description of the dataset.
         """
         if self.testing:
             return
 
         self._worker.create_dataset(
-            dataset_name=dataset_name,
+            name=name,
             description=description,
         )
 
-    def get_dataset(self, dataset_name: str) -> Dict[str, Any]:
-        """Fetch the dataset from the Weavel service.
+    def get_dataset(self, name: str) -> Dataset:
+        """
+        Retrieves a dataset with the given name.
 
         Args:
-            dataset_name (str): The name of the dataset.
+            name (str): The name of the dataset to retrieve.
 
         Returns:
-            Dict[str, Any]: The dataset and dataset items.
+            Dataset: The retrieved dataset.
         """
         if self.testing:
             return {}
 
-        return self._worker.fetch_dataset(dataset_name)
+        return self._worker.fetch_dataset(name)
 
     def create_dataset_items(
         self,
         dataset_name: str,
-        items: Union[List[Dict[str, Any]], List[DatasetItems]],
+        items: Union[List[Dict[str, Any]], List[DatasetItem]],
     ) -> None:
         """Upload dataset items to the Weavel service.
 
         Args:
             dataset_name (str): The name of the dataset.
-            items (List[Dict[str, Any]]): The dataset items to upload. keys: inputs (required, Union[str, Dict[str, str]]), outputs (optional, Union[str, Dict[str, str]]), metadata (optional, Dict[str, str]).
+            items (Union[List[Dict[str, Any]], List[DatasetItem]]): The dataset items to upload.
         """
         if self.testing:
             return
 
         for item in items:
-            if not isinstance(item, DatasetItems):
-                item = DatasetItems(**item)
+            if not isinstance(item, DatasetItem):
+                item = DatasetItem(**item)
 
         self._worker.create_dataset_items(dataset_name, items)
 
     def test(
         self,
-        func: callable,
+        func: Callable,
         dataset_name: str,
         batch_size: int = 50,
         delay: int = 10,
@@ -344,10 +335,7 @@ class Weavel:
         nest_asyncio.apply()
 
         # fetch dataset from server
-        datasets: List[Dict[str, Any]] = self._worker.get_test_dataset(dataset_name)
-
-        if not datasets:
-            raise ValueError(f"Dataset {dataset_name} not found.")
+        dataset: Dataset = self._worker.fetch_dataset(dataset_name)
 
         # create test instance in database
         test_uuid = str(uuid4())
@@ -357,81 +345,83 @@ class Weavel:
         self._worker.testing = True
 
         def _runner(
-            func: callable, dataset_item: Dict, dataset_item_uuid: str, test_uuid: str
+            func: callable,
+            inputs: Union[Dict[str, Any], str],
+            dataset_item_uuid: str,
+            test_uuid: str,
         ):
             # run the function and capture the result
-            if "_RAW_VALUE_" in dataset_item:
-                result = func(dataset_item["_RAW_VALUE_"])
+            if isinstance(inputs, str):
+                result = func(inputs)
             else:
-                result = func(**dataset_item)
-            # if result is not Dict, convert it to Dict
-            if isinstance(result, str):
-                result = {"_RAW_VALUE_": result}
-            elif not isinstance(result, dict):
-                result = {"_RAW_VALUE_": str(result)}
+                result = func(**inputs)
+
+            if not isinstance(result, dict) and not isinstance(result, str):
+                result = str(result)
 
             self._worker.capture_test_observation(
                 created_at=datetime.now(timezone.utc),
                 name=dataset_name,
                 test_uuid=test_uuid,
                 dataset_item_uuid=dataset_item_uuid,
-                inputs=dataset_item,
+                inputs=inputs,
                 outputs=result,
             )
 
         async def _arunner(
-            func: callable, dataset_item: Dict, dataset_item_uuid: str, test_uuid: str
+            func: Callable,
+            inputs: Union[Dict[str, Any], str],
+            dataset_item_uuid: str,
+            test_uuid: str,
         ):
-            if "_RAW_VALUE_" in dataset_item:
-                result = await func(dataset_item["_RAW_VALUE_"])
+            # if "_RAW_VALUE_" in inputs:
+            if isinstance(inputs, str):
+                result = await func(inputs)
             else:
-                result = await func(**dataset_item)
+                result = await func(**inputs)
 
-            if isinstance(result, str):
-                result = {"_RAW_VALUE_": result}
-            elif not isinstance(result, dict):
-                result = {"_RAW_VALUE_": str(result)}
+            if not isinstance(result, dict) and not isinstance(result, str):
+                result = str(result)
 
             self._worker.capture_test_observation(
                 created_at=datetime.now(timezone.utc),
                 name=dataset_name,
                 test_uuid=test_uuid,
                 dataset_item_uuid=dataset_item_uuid,
-                inputs=dataset_item,
+                inputs=inputs,
                 outputs=result,
             )
 
-        async def run_async(func, dataset):
-            for i in range(0, len(dataset), batch_size):
-                batch = list(islice(dataset, i, i + batch_size))
+        async def run_async(func: Callable, dataset_items: List[DatasetItem]):
+            for i in range(0, len(dataset_items), batch_size):
+                batch = list(islice(dataset_items, i, i + batch_size))
                 coros = [
-                    _arunner(func, data["inputs"], data["uuid"], test_uuid)
-                    for data in batch
+                    _arunner(func, data.inputs, data.uuid, test_uuid) for data in batch
                 ]
                 await asyncio.gather(*coros)
-                if i + batch_size < len(dataset):
+                if i + batch_size < len(dataset_items):
                     await asyncio.sleep(delay)
 
-        def run_threaded(func, dataset):
+        def run_threaded(func, dataset_items: List[DatasetItem]):
             with ThreadPoolExecutor() as executor:
-                for i in range(0, len(dataset), batch_size):
-                    batch = list(islice(dataset, i, i + batch_size))
+                for i in range(0, len(dataset_items), batch_size):
+                    batch = list(islice(dataset_items, i, i + batch_size))
                     futures = [
                         executor.submit(
-                            _runner, func, data["inputs"], data["uuid"], test_uuid
+                            _runner, func, data.inputs, data.uuid, test_uuid
                         )
                         for data in batch
                     ]
                     for future in futures:
                         future.result()
-                    if i + batch_size < len(dataset):
+                    if i + batch_size < len(dataset_items):
                         time.sleep(delay)
 
         print("Testing...")
         if asyncio.iscoroutinefunction(func):
-            asyncio.run(run_async(func, datasets))
+            asyncio.run(run_async(func, dataset.items))
         else:
-            run_threaded(func, datasets)
+            run_threaded(func, dataset.items)
 
         print("Test finished. Start Logging...")
 
