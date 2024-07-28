@@ -40,7 +40,7 @@ from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
 from weavel._api_client import APIClient
 from weavel.utils import logger
-from weavel.types.types import DatasetItem, Dataset
+from weavel.types.datasets import DatasetItem, Dataset
 
 
 class Worker:
@@ -51,14 +51,21 @@ class Worker:
             cls._instance = super(Worker, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, api_key: str, base_url: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        base_url: Optional[str] = None,
+        max_retry: int = 3,
+        flush_interval: int = 60,
+        flush_batch_size: int = 20,
+    ) -> None:
         if not hasattr(self, "is_initialized"):
             self.api_key = api_key
             self.endpoint = BACKEND_SERVER_URL if not base_url else base_url
             self.endpoint += "/public/v2"
-            self.max_retry = 3
-            self.flush_interval = 60
-            self.flush_batch_size = 20
+            self.max_retry = max_retry
+            self.flush_interval = flush_interval
+            self.flush_batch_size = flush_batch_size
 
             self.api_client = APIClient()
 
@@ -201,8 +208,8 @@ class Worker:
         record_id: str,
         created_at: datetime,
         name: str,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
     ):
@@ -214,11 +221,6 @@ class Worker:
                 created_at = created_at.astimezone(timezone.utc)
             else:
                 created_at = created_at
-
-            # if isinstance(inputs, str):
-            #     inputs = {"_RAW_VALUE_": inputs}
-            # if isinstance(outputs, str):
-            #     outputs = {"_RAW_VALUE_": outputs}
 
             request = CaptureTraceRequest(
                 body=CaptureTraceBody(
@@ -239,15 +241,11 @@ class Worker:
         self,
         record_id: str,
         ended_at: Optional[datetime] = None,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         ref_record_id: Optional[str] = None,
     ):
-        # if isinstance(inputs, str):
-        #     inputs = {"_RAW_VALUE_": inputs}
-        # if isinstance(outputs, str):
-        #     outputs = {"_RAW_VALUE_": outputs}
 
         if not self.testing:
             request = UpdateTraceRequest(
@@ -269,15 +267,11 @@ class Worker:
         observation_id: str,
         created_at: datetime,
         name: str,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        # if isinstance(inputs, str):
-        #     inputs = {"_RAW_VALUE_": inputs}
-        # if isinstance(outputs, str):
-        #     outputs = {"_RAW_VALUE_": outputs}
         if not self.testing:
             request = CaptureSpanRequest(
                 body=CaptureSpanBody(
@@ -298,15 +292,11 @@ class Worker:
         self,
         observation_id: str,
         ended_at: Optional[datetime] = None,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        # if isinstance(inputs, str):
-        #     inputs = {"_RAW_VALUE_": inputs}
-        # if isinstance(outputs, str):
-        #     outputs = {"_RAW_VALUE_": outputs}
 
         if not self.testing:
             request = UpdateSpanRequest(
@@ -353,15 +343,11 @@ class Worker:
         observation_id: str,
         created_at: datetime,
         name: str,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        # if isinstance(inputs, str):
-        #     inputs = {"_RAW_VALUE_": inputs}
-        # if isinstance(outputs, str):
-        #     outputs = {"_RAW_VALUE_": outputs}
         if not self.testing:
             request = CaptureGenerationRequest(
                 body=CaptureGenerationBody(
@@ -382,15 +368,11 @@ class Worker:
         self,
         observation_id: str,
         ended_at: Optional[datetime] = None,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
     ):
-        # if isinstance(inputs, str):
-        #     inputs = {"_RAW_VALUE_": inputs}
-        # if isinstance(outputs, str):
-        #     outputs = {"_RAW_VALUE_": outputs}
         if not self.testing:
             request = UpdateGenerationRequest(
                 body=UpdateGenerationBody(
@@ -411,14 +393,10 @@ class Worker:
         name: str,
         test_uuid: str,
         dataset_item_uuid: str,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
     ):
-        # if isinstance(inputs, str):
-        #     inputs = {"_RAW_VALUE_": inputs}
-        # if isinstance(outputs, str):
-        #     outputs = {"_RAW_VALUE_": outputs}
         if self.testing:
             request = CaptureTestObservationRequest(
                 body=CaptureTestObservationBody(
@@ -538,6 +516,9 @@ class Worker:
                 )
                 if response.status_code == 200:
                     return
+                # from rich import print
+
+                # print({"batch": [request.model_dump() for request in requests]})
             except Exception as e:
                 print(e)
                 time.sleep(2**attempt)

@@ -11,8 +11,10 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from weavel._worker import Worker
-from weavel.types.instances import Session, Span, Trace
-from weavel.types.types import Dataset, DatasetItem
+
+# from weavel.types.instances import Session, Span, Trace
+from weavel.object_clients import SessionClient, SpanClient, TraceClient
+from weavel.types.datasets import Dataset, DatasetItem
 
 load_dotenv()
 
@@ -33,10 +35,23 @@ class Weavel:
 
     """
 
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        max_retry: Optional[int] = 3,
+        flush_interval: Optional[int] = 60,
+        flush_batch_size: Optional[int] = 20,
+    ):
         self.api_key = api_key or os.getenv("WEAVEL_API_KEY")
         assert self.api_key is not None, "API key not provided."
-        self._worker = Worker(self.api_key, base_url=base_url)
+        self._worker = Worker(
+            self.api_key,
+            base_url=base_url,
+            max_retry=max_retry,
+            flush_interval=flush_interval,
+            flush_batch_size=flush_batch_size,
+        )
 
         self.testing = False
 
@@ -46,7 +61,7 @@ class Weavel:
         session_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
-    ) -> Session:
+    ) -> "SessionClient":
         """Create a new session for the specified user.
 
         Args:
@@ -56,34 +71,35 @@ class Weavel:
             metadata (Dict[str, str], optional): Additional metadata for the session.
 
         Returns:
-            Session: The session object.
+            SessionClient: The session object.
 
         """
-        if user_id is None and session_id is None:
-            raise ValueError("user_id or session_id must be provided.")
+        # if user_id is None and session_id is None:
+        #     raise ValueError("user_id or session_id must be provided.")
 
         if session_id is None:
             session_id = str(uuid4())
         if created_at is None:
             created_at = datetime.now(timezone.utc)
 
-        session = Session(
+        session = SessionClient(
             user_id=user_id,
             session_id=session_id,
             created_at=created_at,
             metadata=metadata,
             weavel_client=self._worker,
         )
+
         if self.testing:
             return session
 
-        if user_id is not None:
-            self._worker.open_session(
-                session_id=session_id,
-                created_at=created_at,
-                user_id=user_id,
-                metadata=metadata,
-            )
+        # if user_id is not None:
+        self._worker.open_session(
+            session_id=session_id,
+            created_at=created_at,
+            user_id=user_id,
+            metadata=metadata,
+        )
         return session
 
     def identify(self, user_id: str, properties: Dict[str, Any]):
@@ -102,11 +118,11 @@ class Weavel:
         record_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         name: Optional[str] = None,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         ref_record_id: Optional[str] = None,
-    ) -> Trace:
+    ) -> TraceClient:
         """Create a new trace record or fetch an existing one
 
         Args:
@@ -147,7 +163,7 @@ class Weavel:
                     metadata=metadata,
                     ref_record_id=ref_record_id,
                 )
-            return Trace(
+            return TraceClient(
                 session_id=session_id,
                 record_id=record_id,
                 created_at=created_at,
@@ -159,7 +175,7 @@ class Weavel:
             )
         else:
             # Fetch an existing trace
-            return Trace(record_id=record_id, weavel_client=self._worker)
+            return TraceClient(record_id=record_id, weavel_client=self._worker)
 
     def span(
         self,
@@ -167,11 +183,11 @@ class Weavel:
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         name: Optional[str] = None,
-        inputs: Optional[Union[Dict[str, Any], str]] = None,
-        outputs: Optional[Union[Dict[str, Any], str]] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         parent_observation_id: Optional[str] = None,
-    ):
+    ) -> SpanClient:
         # if record_id, observation_id, parent_observation_id
         # None, None, None -> ValueError
         # None, Value -> Fetch
@@ -210,7 +226,7 @@ class Weavel:
                     metadata=metadata,
                     parent_observation_id=parent_observation_id,
                 )
-            return Span(
+            return SpanClient(
                 record_id=record_id,
                 observation_id=observation_id,
                 created_at=created_at,
@@ -223,7 +239,7 @@ class Weavel:
             )
         else:
             # Fetch an existing span
-            return Span(observation_id=observation_id, weavel_client=self._worker)
+            return SpanClient(observation_id=observation_id, weavel_client=self._worker)
 
     def track(
         self,
@@ -318,7 +334,7 @@ class Weavel:
         batch_size: int = 50,
         delay: int = 10,
         tags: Optional[List[str]] = None,
-    ):
+    ) -> None:
         """Test the function with the dataset.
         It must be used in the jupyter notebook environment.
 
@@ -346,7 +362,7 @@ class Weavel:
 
         def _runner(
             func: callable,
-            inputs: Union[Dict[str, Any], str],
+            inputs: Union[Dict[str, Any], List[Any], str],
             dataset_item_uuid: str,
             test_uuid: str,
         ):
@@ -370,7 +386,7 @@ class Weavel:
 
         async def _arunner(
             func: Callable,
-            inputs: Union[Dict[str, Any], str],
+            inputs: Union[Dict[str, Any], List[Any], str],
             dataset_item_uuid: str,
             test_uuid: str,
         ):

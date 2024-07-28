@@ -1,6 +1,6 @@
 from h11 import Data
 from pydantic import BaseModel as PydanticBaseModel, Field
-from typing import Any, Dict, Optional, Literal, Union
+from typing import Any, Dict, List, Optional, Literal, Union
 from enum import Enum
 
 
@@ -178,11 +178,11 @@ class CaptureTraceBody(CaptureRecordBody):
         ...,
         description="The name of the trace record. Optional.",
     )
-    inputs: Optional[Union[Dict[str, Any], str]] = Field(
+    inputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The inputs of the trace. Optional.",
     )
-    outputs: Optional[Union[Dict[str, Any], str]] = Field(
+    outputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The outputs of the trace. Optional.",
     )
@@ -193,15 +193,15 @@ class CaptureSpanBody(CaptureObservationBody):
     Represents the body of a capture span observation.
 
     Attributes:
-        inputs (Optional[Union[Dict[str, Any], str]]): The inputs of the generation. Optional.
-        outputs (Optional[Union[Dict[str, Any], str]]): The outputs of the generation. Optional.
+        inputs (Optional[Union[Dict[str, Any], List[Any], str]]): The inputs of the generation. Optional.
+        outputs (Optional[Union[Dict[str, Any], List[Any], str]]): The outputs of the generation. Optional.
     """
 
-    inputs: Optional[Union[Dict[str, Any], str]] = Field(
+    inputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The inputs of the generation. Optional.",
     )
-    outputs: Optional[Union[Dict[str, Any], str]] = Field(
+    outputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The outputs of the generation. Optional.",
     )
@@ -216,11 +216,11 @@ class CaptureTestObservationBody(CaptureObservationBody):
         ...,
         description="The unique identifier for the dataset item.",
     )
-    inputs: Optional[Union[Dict[str, Any], str]] = Field(
+    inputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The inputs of the generation. Optional.",
     )
-    outputs: Optional[Union[Dict[str, Any], str]] = Field(
+    outputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The outputs of the generation. Optional.",
     )
@@ -245,15 +245,15 @@ class CaptureGenerationBody(CaptureObservationBody):
     Represents the body of a capture generation.
 
     Attributes:
-        inputs (Optional[Union[Dict[str, Any], str]]): The inputs of the generation. Optional.
-        outputs (Optional[Union[Dict[str, Any], str]]): The outputs of the generation. Optional.
+        inputs (Optional[Union[Dict[str, Any], List[Any], str]]): The inputs of the generation. Optional.
+        outputs (Optional[Union[Dict[str, Any], List[Any], str]]): The outputs of the generation. Optional.
     """
 
-    inputs: Optional[Union[Dict[str, Any], str]] = Field(
+    inputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The inputs of the generation. Optional.",
     )
-    outputs: Optional[Union[Dict[str, Any], str]] = Field(
+    outputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The outputs of the generation. Optional.",
     )
@@ -262,24 +262,24 @@ class CaptureGenerationBody(CaptureObservationBody):
 class UpdateTraceBody(BaseRecordBody):
     record_id: str
     ended_at: Optional[str] = None
-    inputs: Optional[Union[Dict[str, Any], str]] = None
-    outputs: Optional[Union[Dict[str, Any], str]] = None
+    inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
+    outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
 class UpdateSpanBody(BaseObservationBody):
     observation_id: str
     ended_at: Optional[str] = None
-    inputs: Optional[Union[Dict[str, Any], str]] = None
-    outputs: Optional[Union[Dict[str, Any], str]] = None
+    inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
+    outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
 class UpdateGenerationBody(BaseObservationBody):
     observation_id: str
     ended_at: Optional[str] = None
-    inputs: Optional[Union[Dict[str, Any], str]] = None
-    outputs: Optional[Union[Dict[str, Any], str]] = None
+    inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
+    outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
     metadata: Optional[Dict[str, Any]] = None
 
 

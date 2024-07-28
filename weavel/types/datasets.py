@@ -3,9 +3,9 @@ from pydantic import BaseModel
 
 
 class DatasetItem(BaseModel):
-    uuid: str
-    inputs: Union[Dict[str, Any], str]
-    outputs: Optional[Union[Dict[str, Any], str]] = None
+    uuid: Optional[str] = None
+    inputs: Union[Dict[str, Any], List[Any], str]
+    outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
