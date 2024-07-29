@@ -292,6 +292,25 @@ class Weavel:
             description=description,
         )
 
+    async def acreate_dataset(
+        self,
+        name: str,
+        description: Optional[str] = None,
+    ) -> None:
+        """Upload a dataset to the Weavel service.
+
+        Args:
+            name (str): The name of the dataset.
+            description (str): The description of the dataset.
+        """
+        if self.testing:
+            return
+
+        await self._worker.acreate_dataset(
+            name=name,
+            description=description,
+        )
+
     def get_dataset(self, name: str) -> Dataset:
         """
         Retrieves a dataset with the given name.
@@ -306,6 +325,21 @@ class Weavel:
             return {}
 
         return self._worker.fetch_dataset(name)
+
+    async def aget_dataset(self, name: str) -> Dataset:
+        """
+        Retrieves a dataset with the given name.
+
+        Args:
+            name (str): The name of the dataset to retrieve.
+
+        Returns:
+            Dataset: The retrieved dataset.
+        """
+        if self.testing:
+            return {}
+
+        return await self._worker.afetch_dataset(name)
 
     def create_dataset_items(
         self,
@@ -326,6 +360,26 @@ class Weavel:
                 item = DatasetItem(**item)
 
         self._worker.create_dataset_items(dataset_name, items)
+
+    async def acreate_dataset_items(
+        self,
+        dataset_name: str,
+        items: Union[List[Dict[str, Any]], List[DatasetItem]],
+    ) -> None:
+        """Upload dataset items to the Weavel service.
+
+        Args:
+            dataset_name (str): The name of the dataset.
+            items (Union[List[Dict[str, Any]], List[DatasetItem]]): The dataset items to upload.
+        """
+        if self.testing:
+            return
+
+        for item in items:
+            if not isinstance(item, DatasetItem):
+                item = DatasetItem(**item)
+
+        await self._worker.acreate_dataset_items(dataset_name, items)
 
     def test(
         self,

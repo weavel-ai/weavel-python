@@ -38,7 +38,7 @@ from weavel._body import (
 
 from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
-from weavel._api_client import APIClient
+from weavel._api_client import APIClient, AsyncAPIClient
 from weavel.utils import logger
 from weavel.types.datasets import DatasetItem, Dataset
 
@@ -68,6 +68,7 @@ class Worker:
             self.flush_batch_size = flush_batch_size
 
             self.api_client = APIClient()
+            self.async_api_client = AsyncAPIClient()
 
             self.api_pool = ThreadPoolExecutor(max_workers=1)
             self.buffer_storage = BufferStorage(max_buffer_size=1000)
@@ -430,6 +431,24 @@ class Worker:
         if response.status_code != 200:
             raise Exception(f"Failed to create dataset: {response.text}")
 
+    async def acreate_dataset(
+        self,
+        name: str,
+        description: Optional[str] = None,
+    ) -> None:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/datasets",
+            method="POST",
+            json={
+                "name": name,
+                "description": description,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to create dataset: {response.text}")
+
     def create_dataset_items(
         self,
         dataset_name: str,
@@ -448,11 +467,45 @@ class Worker:
         if response.status_code != 200:
             raise Exception(f"Failed to create dataset items: {response.text}")
 
+    async def acreate_dataset_items(
+        self,
+        dataset_name: str,
+        items: List[DatasetItem],
+    ) -> None:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/dataset_items/batch",
+            method="POST",
+            json={
+                "dataset_name": dataset_name,
+                "items": items,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to create dataset items: {response.text}")
+
     def fetch_dataset(
         self,
         name: str,
     ) -> Dataset:
         response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/datasets/{name}",
+            method="GET",
+        )
+
+        if response.status_code == 200:
+            return Dataset(**response.json())
+        else:
+            raise Exception(f"Failed to get dataset: {response.text}")
+
+    async def afetch_dataset(
+        self,
+        name: str,
+    ) -> Dataset:
+        response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
             f"/datasets/{name}",
