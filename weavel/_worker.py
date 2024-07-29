@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from threading import Thread
 from concurrent.futures import Future, ThreadPoolExecutor
 
+import termcolor
+
 from weavel._request import (
     CaptureSessionRequest,
     IdentifyUserRequest,
@@ -484,6 +486,29 @@ class Worker:
         if response.status_code != 200:
             raise Exception(f"Failed to create test: {response.text}")
 
+    def prompt_optimization(
+        self,
+        dataset_name: str,
+        model: str,
+        initial_prompt: Optional[str] = None,
+    ) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/prompts/optimization/prompt",
+            method="POST",
+            json={
+                "dataset_name": dataset_name,
+                "model": model,
+                "initial_prompt": initial_prompt,
+            },
+        )
+        
+        if response.status_code != 200:
+            raise Exception(f"Failed to start prompt optimization: {response.text}")
+        else:
+            print(termcolor.colored(response.text, "green"))
+            
     def send_requests(
         self,
         requests: List[UnionRequest],

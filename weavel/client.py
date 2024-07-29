@@ -446,6 +446,30 @@ class Weavel:
 
         self._worker.flush()
         print("Test completed.")
+        
+    def prompt_optimization(
+        self,
+        dataset_name: str,
+        model: str,
+        initial_prompt: Optional[str] = None,
+    ):
+        """
+        Prompt optimization is a method to optimize the prompt for the given model.
+        It will return the optimized prompt for the model.
+
+        Args:
+            dataset_name (str): The name of the dataset.
+            model_name (str): The name of the model.
+            initial_prompt (str, optional): The initial prompt for the model.
+        """
+        if self.testing:
+            return
+        
+        self._worker.prompt_optimization(
+            dataset_name=dataset_name,
+            model=model,
+            initial_prompt=initial_prompt,
+        )
 
     def close(self):
         """Close the client connection."""
