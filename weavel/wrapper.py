@@ -39,6 +39,20 @@ DEFAULT_PARAMS = {
     "user": None,
 }
 
+def calculate_cost(model: str, usage: Dict[str, int]) -> float:
+    if model not in pricing:
+        raise ValueError(f"Unknown model: {model}")
+
+    input_tokens = usage.get("prompt_tokens", 0)
+    output_tokens = usage.get("completion_tokens", 0)
+
+    input_cost = input_tokens * pricing[model]["input"]
+    output_cost = output_tokens * pricing[model]["output"]
+
+    total_cost = input_cost + output_cost
+
+    return round(total_cost, 6)
+
 
 class LoggingSuppressor:
     def __init__(self, worker):
@@ -195,7 +209,7 @@ class WeavelOpenAI(OpenAI):
 
                 model = accumulated_response["model"]
                 usage = accumulated_response["usage"]
-                cost = self._calculate_cost(model, usage)
+                cost = calculate_cost(model, usage)
                 accumulated_response["cost"] = cost
 
                 self._capture_generation(inputs=kwargs, outputs=accumulated_response)
@@ -219,25 +233,11 @@ class WeavelOpenAI(OpenAI):
                 }
 
                 # Calculate and add cost
-                cost = self._calculate_cost(response.model, formatted_response["usage"])
+                cost = calculate_cost(response.model, formatted_response["usage"])
                 formatted_response["cost"] = cost
 
                 self._capture_generation(inputs=kwargs, outputs=formatted_response)
                 return response
-
-            def _calculate_cost(self, model: str, usage: Dict[str, int]) -> float:
-                if model not in pricing:
-                    raise ValueError(f"Unknown model: {model}")
-
-                input_tokens = usage.get("prompt_tokens", 0)
-                output_tokens = usage.get("completion_tokens", 0)
-
-                input_cost = input_tokens * pricing[model]["input"]
-                output_cost = output_tokens * pricing[model]["output"]
-
-                total_cost = input_cost + output_cost
-
-                return round(total_cost, 6)
 
             def _capture_generation(
                 self,
@@ -265,18 +265,39 @@ class WeavelOpenAI(OpenAI):
 
             def parse(self, *args, **kwargs):
                 header = kwargs.pop("headers", {})
+                start_time = time.time()
 
                 # context manager to suppress duplicate logging
                 with LoggingSuppressor(self._worker):
                     response = self.original.parse(*args, **kwargs)
-
+                    
+                end_time = time.time()
+                latency = end_time - start_time
+                
+                formatted_response = {
+                    "id": response.id,
+                    "choices": [choice.model_dump() for choice in response.choices],
+                    "created": response.created,
+                    "model": response.model,
+                    "object": response.object,
+                    "usage": response.usage.model_dump() if response.usage else None,
+                    "service_tier": response.service_tier,
+                    "system_fingerprint": response.system_fingerprint,
+                    "latency": latency,
+                }
+                
+                # Calculate and add cost
+                cost = calculate_cost(response.model, formatted_response["usage"])
+                formatted_response["cost"] = cost
+                
                 self._worker.capture_generation(
                     observation_id=str(uuid4()),
                     created_at=datetime.now(timezone.utc),
                     name=header.get("generation_name", "OpenAI Beta Chat Parse"),
                     inputs=kwargs,
-                    outputs=response,
+                    outputs=formatted_response,
                 )
+                
                 return response
 
         self.chat.completions = CustomChatCompletions(
@@ -412,7 +433,7 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
 
                 model = accumulated_response["model"]
                 usage = accumulated_response["usage"]
-                cost = self._calculate_cost(model, usage)
+                cost = calculate_cost(model, usage)
                 accumulated_response["cost"] = cost
                 
                 if self._worker.capture_generation is not None:
@@ -439,7 +460,7 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                 }
 
                 # Calculate and add cost
-                cost = self._calculate_cost(response.model, formatted_response["usage"])
+                cost = calculate_cost(response.model, formatted_response["usage"])
                 formatted_response["cost"] = cost
 
                 if self._worker.capture_generation is None:
@@ -449,21 +470,7 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                     inputs=kwargs, outputs=formatted_response
                 )
                 return response
-
-            def _calculate_cost(self, model: str, usage: Dict[str, int]) -> float:
-                if model not in pricing:
-                    raise ValueError(f"Unknown model: {model}")
-
-                input_tokens = usage.get("prompt_tokens", 0)
-                output_tokens = usage.get("completion_tokens", 0)
-
-                input_cost = input_tokens * pricing[model]["input"]
-                output_cost = output_tokens * pricing[model]["output"]
-
-                total_cost = input_cost + output_cost
-
-                return round(total_cost, 6)
-
+            
             async def _capture_generation(
                 self,
                 inputs,
@@ -490,16 +497,36 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
 
             async def parse(self, *args, **kwargs):
                 header = kwargs.pop("headers", {})
-
+                start_time = time.time()
+                
                 async with AsyncLoggingSuppressor(self._worker):
                     response = await self.original.parse(*args, **kwargs)
+                    
+                end_time = time.time()
+                latency = end_time - start_time
+                    
+                formatted_response = {
+                    "id": response.id,
+                    "choices": [choice.model_dump() for choice in response.choices],
+                    "created": response.created,
+                    "model": response.model,
+                    "object": response.object,
+                    "usage": response.usage.model_dump() if response.usage else None,
+                    "service_tier": response.service_tier,
+                    "system_fingerprint": response.system_fingerprint,
+                    "latency": latency,
+                }
+                
+                # Calculate and add cost
+                cost = calculate_cost(response.model, formatted_response["usage"])
+                formatted_response["cost"] = cost
 
                 await self._worker.acapture_generation(
                     observation_id=str(uuid4()),
                     created_at=datetime.now(timezone.utc),
                     name=header.get("generation_name", "Async OpenAI Beta Chat Parse"),
                     inputs=kwargs,
-                    outputs=response,
+                    outputs=formatted_response,
                 )
                 return response
 
