@@ -205,7 +205,7 @@ class WeavelOpenAI(OpenAI):
 
                 end_time = time.time()
                 latency = end_time - start_time
-                accumulated_response["latency"] = latency
+                accumulated_response["latency"] = round(latency, 6)
 
                 model = accumulated_response["model"]
                 usage = accumulated_response["usage"]
@@ -219,6 +219,7 @@ class WeavelOpenAI(OpenAI):
                 response = self.original.create(*args, **kwargs)
                 end_time = time.time()
                 latency = end_time - start_time
+                latency = round(latency, 6)
 
                 formatted_response = {
                     "id": response.id,
@@ -273,6 +274,7 @@ class WeavelOpenAI(OpenAI):
                     
                 end_time = time.time()
                 latency = end_time - start_time
+                latency = round(latency, 6)
                 
                 formatted_response = {
                     "id": response.id,
@@ -429,7 +431,7 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
 
                 end_time = time.time()
                 latency = end_time - start_time
-                accumulated_response["latency"] = latency
+                accumulated_response["latency"] = round(latency, 6)
 
                 model = accumulated_response["model"]
                 usage = accumulated_response["usage"]
@@ -446,6 +448,7 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                 response = await self.original.create(*args, **kwargs)
                 end_time = time.time()
                 latency = end_time - start_time
+                latency = round(latency, 6)
 
                 formatted_response = {
                     "id": response.id,
@@ -504,6 +507,7 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                     
                 end_time = time.time()
                 latency = end_time - start_time
+                latency = round(latency, 6)
                     
                 formatted_response = {
                     "id": response.id,
