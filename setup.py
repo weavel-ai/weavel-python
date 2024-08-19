@@ -13,7 +13,7 @@ setup(
     version="1.7.0",
     packages=find_namespace_packages(),
     entry_points={},
-    description="Weavel, natural language analysis Dashboard for LLM Agent",
+    description="Weavel, Prompt Optimization and Evaluation for LLM Applications",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="weavel",
@@ -41,10 +41,12 @@ setup(
         "weavel",
         "agent",
         "llm",
+        "evaluation",
         "llm evaluation",
-        "llm monitoring",
         "prompt evaluation",
         "dataset curation",
-        "funnel analytics",
+        "prompt engineering",
+        "prompt optimization",
+        "AI Prompt Engineer"
     ],
 )
