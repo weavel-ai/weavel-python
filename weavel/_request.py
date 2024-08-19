@@ -1,4 +1,7 @@
-from typing import List, Union, Literal
+from datetime import datetime
+from typing import Any, List, Union, Literal
+
+from openai import NotGiven
 from ._body import (
     BaseModel,
     IngestionType,
@@ -108,9 +111,58 @@ class CaptureGenerationRequest(IngestionBody):
     type: Literal[IngestionType.CaptureGeneration] = IngestionType.CaptureGeneration
     body: CaptureGenerationBody
 
+    def serialize_output(self, output: Any) -> Any:
+        if isinstance(output, NotGiven):
+            return "NOT_GIVEN"
+        if isinstance(output, (int, float, bool, str, type(None))):
+            return output
+        if isinstance(output, datetime):
+            return output.isoformat()
+        if isinstance(output, tuple):
+            return {output[0]: self.serialize_output(output[1])}
+        if hasattr(output, "__dict__"):
+            return {
+                k: self.serialize_output(v)
+                for k, v in output.__dict__.items()
+                if not k.startswith("_")
+            }
+        if isinstance(output, list):
+            return [self.serialize_output(item) for item in output]
+        if isinstance(output, dict):
+            return {k: self.serialize_output(v) for k, v in output.items()}
+        return str(output)
+
+    def model_dump(self):
+        inputs = self.body.inputs
+        serialized_inputs = (
+            inputs if isinstance(inputs, str) else self.serialize_output(inputs)
+        )
+        outputs = self.body.outputs
+        serialized_outputs = (
+            outputs if isinstance(outputs, str) else self.serialize_output(outputs)
+        )
+
+        return {
+            "type": self.type,
+            "body": {
+                "record_id": self.body.record_id,
+                "observation_id": self.body.observation_id,
+                "created_at": self.body.created_at,
+                "name": self.body.name,
+                "parent_observation_id": self.body.parent_observation_id,
+                "inputs": serialized_inputs,
+                "outputs": serialized_outputs,
+                "metadata": self.body.metadata,
+            },
+        }
+
+
 class CaptureTestObservationRequest(IngestionBody):
-    type: Literal[IngestionType.CaptureTestObservation] = IngestionType.CaptureTestObservation
+    type: Literal[IngestionType.CaptureTestObservation] = (
+        IngestionType.CaptureTestObservation
+    )
     body: CaptureTestObservationBody
+
 
 class UpdateTraceRequest(IngestionBody):
     type: Literal[IngestionType.UpdateTrace] = IngestionType.UpdateTrace
@@ -120,7 +172,6 @@ class UpdateTraceRequest(IngestionBody):
 class UpdateSpanRequest(IngestionBody):
     type: Literal[IngestionType.UpdateSpan] = IngestionType.UpdateSpan
     body: UpdateSpanBody
-
 
 
 class IdentifyUserRequest(IngestionBody):
@@ -157,7 +208,8 @@ class BatchRequest(BaseModel):
             UpdateGenerationRequest,
         ]
     ]
-    
+
+
 UnionRequest = Union[
     CaptureSessionRequest,
     IdentifyUserRequest,

@@ -76,7 +76,6 @@ class Worker:
             self._thread = Thread(target=self.consume_buffer, daemon=True)
             self._thread.start()
             self.is_initialized = True
-
             self.testing = False
 
     def open_session(
@@ -340,10 +339,37 @@ class Worker:
 
     def capture_generation(
         self,
-        record_id: str,
         observation_id: str,
         created_at: datetime,
         name: str,
+        record_id: Optional[str] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        parent_observation_id: Optional[str] = None,
+    ):
+        if not self.testing:
+            request = CaptureGenerationRequest(
+                body=CaptureGenerationBody(
+                    record_id=record_id,
+                    observation_id=observation_id,
+                    created_at=created_at.isoformat(),
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    parent_observation_id=parent_observation_id,
+                )
+            )
+            self.buffer_storage.push(request)
+        return
+
+    async def acapture_generation(
+        self,
+        observation_id: str,
+        created_at: datetime,
+        name: str,
+        record_id: Optional[str] = None,
         inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,

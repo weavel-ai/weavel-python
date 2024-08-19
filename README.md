@@ -3,7 +3,7 @@
         <img src="https://i.imgur.com/uQ7ulX3.png" title="Logo" style="" />
     </a>
     <h1>Weavel Python SDK</h1>
-    <h3>Performance Testing & Analytics for LLM Applications</h3>
+    <h3>Prompt Optimization & Evaluation for LLM Applications</h3>
     <div>
         <a href="https://pypi.org/project/weavel" target="_blank">
             <img src="https://img.shields.io/pypi/v/weavel.svg" alt="PyPI Version"/>
@@ -22,6 +22,27 @@ pip install weavel
 You can find our full documentation [here](https://weavel.ai/docs/sdks/python).
 
 ## How to use
+
+### Basic Usage
+
+```python
+from weavel import WeavelOpenAI as OpenAI
+
+openai = OpenAI()
+
+response = openai.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "user", "content": "Hello, world!"}
+    ],
+    headers={
+      "generation_name": "hello",
+    }
+)
+
+```
+
+### Advanced Usage
 
 ```python
 from weavel import Weavel

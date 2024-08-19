@@ -90,6 +90,10 @@ class BaseObservationBody(BaseModel):
         default=None,
         description="The name of the observation. Optional.",
     )
+    metadata: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Additional metadata associated with the observation. Optional.",
+    )
     parent_observation_id: Optional[str] = Field(
         default=None,
         description="The parent observation ID. Optional.",
