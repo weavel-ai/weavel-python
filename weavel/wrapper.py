@@ -41,7 +41,8 @@ DEFAULT_PARAMS = {
 
 def calculate_cost(model: str, usage: Dict[str, int]) -> float:
     if model not in pricing:
-        raise ValueError(f"Unknown model: {model}")
+        # raise ValueError(f"Unknown model: {model}")
+        return round(0, 6)
 
     input_tokens = usage.get("prompt_tokens", 0)
     output_tokens = usage.get("completion_tokens", 0)
