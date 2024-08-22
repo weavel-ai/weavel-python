@@ -19,7 +19,7 @@ pip install weavel
 
 ## Documentation
 
-You can find our full documentation [here](https://weavel.ai/docs/sdks/python).
+You can find our full documentation [here](https://weavel.ai/docs/python-sdk).
 
 ## How to use
 
