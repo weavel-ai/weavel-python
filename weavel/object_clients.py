@@ -312,7 +312,7 @@ class SpanClient(Span, ObjectClient):
         return
 
 
-class GenerationClient(Generation, BaseClient):
+class GenerationClient(Generation, ObjectClient):
 
     def update(
         self,

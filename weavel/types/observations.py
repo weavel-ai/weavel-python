@@ -26,6 +26,7 @@ class Span(Observation):
 
 class Generation(Observation):
     type: Literal["generation"] = "generation"
+    prompt_name: Optional[str] = None
     inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
     outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
     ended_at: Optional[datetime] = None

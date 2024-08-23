@@ -347,6 +347,7 @@ class Worker:
         outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
+        prompt_name: Optional[str] = None,
     ):
         if not self.testing:
             request = CaptureGenerationRequest(
@@ -359,6 +360,7 @@ class Worker:
                     outputs=outputs,
                     metadata=metadata,
                     parent_observation_id=parent_observation_id,
+                    prompt_name=prompt_name,
                 )
             )
             self.buffer_storage.push(request)
@@ -374,6 +376,7 @@ class Worker:
         outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
+        prompt_name: Optional[str] = None,
     ):
         if not self.testing:
             request = CaptureGenerationRequest(
@@ -386,6 +389,7 @@ class Worker:
                     outputs=outputs,
                     metadata=metadata,
                     parent_observation_id=parent_observation_id,
+                    prompt_name=prompt_name,
                 )
             )
             self.buffer_storage.push(request)
@@ -399,6 +403,7 @@ class Worker:
         outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
+        prompt_name: Optional[str] = None,
     ):
         if not self.testing:
             request = UpdateGenerationRequest(

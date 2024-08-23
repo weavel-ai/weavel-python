@@ -153,6 +153,7 @@ class CaptureGenerationRequest(IngestionBody):
                 "inputs": serialized_inputs,
                 "outputs": serialized_outputs,
                 "metadata": self.body.metadata,
+                "prompt_name": self.body.prompt_name,
             },
         }
 

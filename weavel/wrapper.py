@@ -1,4 +1,4 @@
-import asyncio
+from dotenv import load_dotenv
 import os
 from typing import Dict, Optional
 from uuid import uuid4
@@ -38,6 +38,8 @@ DEFAULT_PARAMS = {
     "parallel_tool_calls": True,
     "user": None,
 }
+
+load_dotenv()
 
 def calculate_cost(model: str, usage: Dict[str, int]) -> float:
     if model not in pricing:
@@ -249,7 +251,8 @@ class WeavelOpenAI(OpenAI):
                 self._worker.capture_generation(
                     observation_id=str(uuid4()),
                     created_at=datetime.now(timezone.utc),
-                    name=self.header.get("generation_name", "OpenAI Chat"),
+                    name=self.header.get("name", "OpenAI Chat"),
+                    prompt_name=self.header.get("prompt_name", None),
                     inputs=inputs,
                     outputs=outputs,
                 )
@@ -296,7 +299,8 @@ class WeavelOpenAI(OpenAI):
                 self._worker.capture_generation(
                     observation_id=str(uuid4()),
                     created_at=datetime.now(timezone.utc),
-                    name=header.get("generation_name", "OpenAI Beta Chat Parse"),
+                    name=header.get("name", "OpenAI Beta Chat Parse"),
+                    prompt_name=header.get("prompt_name", None),
                     inputs=kwargs,
                     outputs=formatted_response,
                 )
@@ -483,7 +487,8 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                 await self._worker.acapture_generation(
                     observation_id=str(uuid4()),
                     created_at=datetime.now(timezone.utc),
-                    name=self.header.get("generation_name", "AsyncOpenAI Chat"),
+                    name=self.header.get("name", "AsyncOpenAI Chat"),
+                    prompt_name=self.header.get("prompt_name", None),
                     inputs=inputs,
                     outputs=outputs,
                 )
@@ -529,7 +534,8 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                 await self._worker.acapture_generation(
                     observation_id=str(uuid4()),
                     created_at=datetime.now(timezone.utc),
-                    name=header.get("generation_name", "Async OpenAI Beta Chat Parse"),
+                    name=header.get("name", "Async OpenAI Beta Chat Parse"),
+                    prompt_name=header.get("prompt_name", None),
                     inputs=kwargs,
                     outputs=formatted_response,
                 )
