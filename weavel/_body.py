@@ -251,6 +251,7 @@ class CaptureGenerationBody(CaptureObservationBody):
     Attributes:
         inputs (Optional[Union[Dict[str, Any], List[Any], str]]): The inputs of the generation. Optional.
         outputs (Optional[Union[Dict[str, Any], List[Any], str]]): The outputs of the generation. Optional.
+        prompt_name (Optional[str]): The name of the prompt. Optional.
     """
 
     inputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
@@ -260,6 +261,10 @@ class CaptureGenerationBody(CaptureObservationBody):
     outputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The outputs of the generation. Optional.",
+    )
+    prompt_name: Optional[str] = Field(
+        default=None,
+        description="The name of the prompt. Optional.",
     )
 
 

@@ -13,7 +13,12 @@ from dotenv import load_dotenv
 from weavel._worker import Worker
 
 # from weavel.types.instances import Session, Span, Trace
-from weavel.object_clients import SessionClient, SpanClient, TraceClient
+from weavel.object_clients import (
+    GenerationClient,
+    SessionClient,
+    SpanClient,
+    TraceClient,
+)
 from weavel.types.datasets import Dataset, DatasetItem
 
 load_dotenv()
@@ -176,6 +181,87 @@ class Weavel:
         else:
             # Fetch an existing trace
             return TraceClient(record_id=record_id, weavel_client=self._worker)
+
+    def generation(
+        self,
+        record_id: Optional[str] = None,
+        observation_id: Optional[str] = None,
+        created_at: Optional[datetime] = None,
+        name: Optional[str] = None,
+        inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        parent_observation_id: Optional[str] = None,
+        prompt_name: Optional[str] = None,
+    ) -> GenerationClient:
+        # if record_id, observation_id, parent_observation_id
+        # None, None, None -> ValueError
+        # None, Value -> Fetch
+        # Value -> Create
+        # None, -, Value -> Create
+
+        if not record_id and not observation_id and not parent_observation_id:
+            if observation_id is None:
+                observation_id = str(uuid4())
+            if created_at is None:
+                created_at = datetime.now(timezone.utc)
+            self._worker.capture_generation(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at,
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+                prompt_name=prompt_name,
+            )
+        if (
+            record_id or (record_id is None and parent_observation_id)
+        ) and name is None:
+            raise ValueError(
+                "If you want to create a new generation, you must provide a name."
+            )
+
+        if record_id is not None or (
+            record_id is None and parent_observation_id is not None
+        ):
+            # Create a new generation
+            if observation_id is None:
+                observation_id = str(uuid4())
+            if created_at is None:
+                created_at = datetime.now(timezone.utc)
+
+            if not self.testing:
+                self._worker.capture_generation(
+                    record_id=record_id,
+                    observation_id=observation_id,
+                    created_at=created_at,
+                    name=name,
+                    inputs=inputs,
+                    outputs=outputs,
+                    metadata=metadata,
+                    parent_observation_id=parent_observation_id,
+                    prompt_name=prompt_name,
+                )
+            return GenerationClient(
+                record_id=record_id,
+                observation_id=observation_id,
+                created_at=created_at,
+                name=name,
+                inputs=inputs,
+                outputs=outputs,
+                metadata=metadata,
+                parent_observation_id=parent_observation_id,
+                prompt_name=prompt_name,
+                weavel_client=self._worker,
+            )
+        else:
+            # Fetch an existing generation
+            return GenerationClient(
+                observation_id=observation_id,
+                weavel_client=self._worker,
+            )
 
     def span(
         self,
