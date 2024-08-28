@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="weavel",
-    version="1.7.1",
+    version="1.8.0",
     packages=find_namespace_packages(),
     entry_points={},
     description="Weavel, Prompt Optimization and Evaluation for LLM Applications",
@@ -32,8 +32,6 @@ setup(
         "termcolor",
         "watchdog",
         "readerwriterlock",
-        "pendulum",
-        "httpx[http2]",
         "nest_asyncio",
     ],
     python_requires=">=3.8.10",
@@ -47,6 +45,6 @@ setup(
         "dataset curation",
         "prompt engineering",
         "prompt optimization",
-        "AI Prompt Engineer"
+        "AI Prompt Engineer",
     ],
 )

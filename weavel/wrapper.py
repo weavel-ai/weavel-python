@@ -41,6 +41,7 @@ DEFAULT_PARAMS = {
 
 load_dotenv()
 
+
 def calculate_cost(model: str, usage: Dict[str, int]) -> float:
     if model not in pricing:
         # raise ValueError(f"Unknown model: {model}")
@@ -240,6 +241,7 @@ class WeavelOpenAI(OpenAI):
                 cost = calculate_cost(response.model, formatted_response["usage"])
                 formatted_response["cost"] = cost
 
+                # TODO: models, latency, cost shouldn't be logged as inputs. Should have separate fields for each.
                 self._capture_generation(inputs=kwargs, outputs=formatted_response)
                 return response
 
@@ -275,11 +277,11 @@ class WeavelOpenAI(OpenAI):
                 # context manager to suppress duplicate logging
                 with LoggingSuppressor(self._worker):
                     response = self.original.parse(*args, **kwargs)
-                    
+
                 end_time = time.time()
                 latency = end_time - start_time
                 latency = round(latency, 6)
-                
+
                 formatted_response = {
                     "id": response.id,
                     "choices": [choice.model_dump() for choice in response.choices],
@@ -291,11 +293,12 @@ class WeavelOpenAI(OpenAI):
                     "system_fingerprint": response.system_fingerprint,
                     "latency": latency,
                 }
-                
+
                 # Calculate and add cost
                 cost = calculate_cost(response.model, formatted_response["usage"])
                 formatted_response["cost"] = cost
-                
+
+                # TODO: models, latency, cost shouldn't be logged as inputs. Should have separate fields for each.
                 self._worker.capture_generation(
                     observation_id=str(uuid4()),
                     created_at=datetime.now(timezone.utc),
@@ -304,7 +307,7 @@ class WeavelOpenAI(OpenAI):
                     inputs=kwargs,
                     outputs=formatted_response,
                 )
-                
+
                 return response
 
         self.chat.completions = CustomChatCompletions(
@@ -442,7 +445,7 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                 usage = accumulated_response["usage"]
                 cost = calculate_cost(model, usage)
                 accumulated_response["cost"] = cost
-                
+
                 if self._worker.capture_generation is not None:
                     await self._capture_generation(
                         inputs=kwargs, outputs=accumulated_response
@@ -478,7 +481,7 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                     inputs=kwargs, outputs=formatted_response
                 )
                 return response
-            
+
             async def _capture_generation(
                 self,
                 inputs,
@@ -507,14 +510,14 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
             async def parse(self, *args, **kwargs):
                 header = kwargs.pop("headers", {})
                 start_time = time.time()
-                
+
                 async with AsyncLoggingSuppressor(self._worker):
                     response = await self.original.parse(*args, **kwargs)
-                    
+
                 end_time = time.time()
                 latency = end_time - start_time
                 latency = round(latency, 6)
-                    
+
                 formatted_response = {
                     "id": response.id,
                     "choices": [choice.model_dump() for choice in response.choices],
@@ -526,7 +529,7 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                     "system_fingerprint": response.system_fingerprint,
                     "latency": latency,
                 }
-                
+
                 # Calculate and add cost
                 cost = calculate_cost(response.model, formatted_response["usage"])
                 formatted_response["cost"] = cost

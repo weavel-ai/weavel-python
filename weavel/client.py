@@ -190,6 +190,7 @@ class Weavel:
         name: Optional[str] = None,
         inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        messages: Optional[List[Dict[str, str]]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         parent_observation_id: Optional[str] = None,
         prompt_name: Optional[str] = None,
@@ -212,15 +213,10 @@ class Weavel:
                 name=name,
                 inputs=inputs,
                 outputs=outputs,
+                messages=messages,
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
                 prompt_name=prompt_name,
-            )
-        if (
-            record_id or (record_id is None and parent_observation_id)
-        ) and name is None:
-            raise ValueError(
-                "If you want to create a new generation, you must provide a name."
             )
 
         if record_id is not None or (
@@ -240,6 +236,7 @@ class Weavel:
                     name=name,
                     inputs=inputs,
                     outputs=outputs,
+                    messages=messages,
                     metadata=metadata,
                     parent_observation_id=parent_observation_id,
                     prompt_name=prompt_name,
@@ -251,6 +248,7 @@ class Weavel:
                 name=name,
                 inputs=inputs,
                 outputs=outputs,
+                messages=messages,
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
                 prompt_name=prompt_name,
@@ -442,8 +440,8 @@ class Weavel:
             return
 
         for item in items:
-            if not isinstance(item, DatasetItem):
-                item = DatasetItem(**item)
+            if isinstance(item, DatasetItem):
+                item = item.model_dump()
 
         self._worker.create_dataset_items(dataset_name, items)
 
@@ -462,8 +460,8 @@ class Weavel:
             return
 
         for item in items:
-            if not isinstance(item, DatasetItem):
-                item = DatasetItem(**item)
+            if isinstance(item, DatasetItem):
+                item = item.model_dump()
 
         await self._worker.acreate_dataset_items(dataset_name, items)
 
