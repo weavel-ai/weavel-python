@@ -132,7 +132,10 @@ class CaptureRecordBody(BaseRecordBody):
 
 
 class CaptureObservationBody(BaseObservationBody):
-    name: str
+    name: Optional[str] = Field(
+        default=None,
+        description="The name of the observation. Optional.",
+    )
 
 
 class CaptureMessageBody(CaptureRecordBody):
@@ -261,6 +264,22 @@ class CaptureGenerationBody(CaptureObservationBody):
     outputs: Optional[Union[Dict[str, Any], List[Any], str]] = Field(
         default=None,
         description="The outputs of the generation. Optional.",
+    )
+    messages: Optional[List[Dict[str, str]]] = Field(
+        default=None,
+        description="The messages of the generation. Optional.",
+    )
+    model: Optional[str] = Field(
+        default=None,
+        description="The model of the generation. Optional.",
+    )
+    latency: Optional[float] = Field(
+        default=None,
+        description="The latency of the generation. Optional.",
+    )
+    cost: Optional[float] = Field(
+        default=None,
+        description="The cost of the generation. Optional.",
     )
     prompt_name: Optional[str] = Field(
         default=None,
