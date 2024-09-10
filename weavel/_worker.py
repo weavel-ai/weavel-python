@@ -754,7 +754,7 @@ class Worker:
         if response.status_code != 200:
             raise Exception(f"Failed to create prompt version: {response.text}")
     
-    def fetch_prompt_version(self, prompt_name: str, version: int) -> PromptVersion:
+    def fetch_prompt_version(self, prompt_name: str, version: Union[str, int]) -> PromptVersion:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
@@ -766,7 +766,7 @@ class Worker:
         else:
             raise Exception(f"Failed to fetch prompt version: {response.text}")
 
-    async def afetch_prompt_version(self, prompt_name: str, version: int) -> PromptVersion:
+    async def afetch_prompt_version(self, prompt_name: str, version: Union[str, int]) -> PromptVersion:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,

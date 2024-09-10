@@ -614,12 +614,14 @@ class Weavel:
             metadata=metadata,
         )
 
-    def fetch_prompt_version(self, prompt_name: str, version: str) -> PromptVersion:
+    def fetch_prompt_version(
+        self, prompt_name: str, version: Union[str, int]
+    ) -> PromptVersion:
         """Fetch a specific version of a prompt.
 
         Args:
             prompt_name (str): The name of the prompt.
-            version (str): The version identifier to fetch.
+            version (Union[str, int]): The version identifier to fetch. Get latest version by version = 'latest'. Otherwise, specify the version number.
 
         Returns:
             PromptVersion: The prompt version details.
@@ -632,9 +634,10 @@ class Weavel:
         )
 
     async def afetch_prompt_version(
-        self, prompt_name: str, version: str
+        self, prompt_name: str, version: Union[str, int]
     ) -> PromptVersion:
         """Fetch a specific version of a prompt asynchronously.
+        Get latest version by version = 'latest'. Otherwise, specify the version number.
 
         Args:
             prompt_name (str): The name of the prompt.
