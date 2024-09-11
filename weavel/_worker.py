@@ -40,8 +40,9 @@ from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
 from weavel._api_client import APIClient, AsyncAPIClient
 from weavel.utils import logger
-from weavel.types.datasets import DatasetItem, Dataset, Prompt, PromptVersion
+from weavel.types import DatasetItem, Dataset, Prompt, PromptVersion
 from ape.types import ResponseFormat
+
 
 class Worker:
     _instance = None
@@ -577,7 +578,7 @@ class Worker:
         )
         if response.status_code != 200:
             raise Exception(f"Failed to create test: {response.text}")
-        
+
     # create, fetch, delete, list prompts
     def create_prompt(
         self,
@@ -668,7 +669,7 @@ class Worker:
         )
         if response.status_code != 200:
             raise Exception(f"Failed to delete prompt: {response.text}")
-        
+
     def list_prompts(self) -> List[Prompt]:
         response = self.api_client.execute(
             self.api_key,
@@ -694,18 +695,18 @@ class Worker:
             return [Prompt(**prompt) for prompt in response.json()]
         else:
             raise Exception(f"Failed to list prompts: {response.text}")
-    
+
     # create, fetch, delete, list prompt versions
     def create_prompt_version(
         self,
         prompt_name: str,
         messages: List[Dict[str, Any]],
-        model: str = 'gpt-4o-mini',
+        model: str = "gpt-4o-mini",
         temperature: float = 0.0,
         response_format: Optional[ResponseFormat] = None,
         input_vars: Optional[Dict[str, Any]] = None,
         output_vars: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         response = self.api_client.execute(
             self.api_key,
@@ -719,8 +720,8 @@ class Worker:
                 "response_format": response_format,
                 "input_vars": input_vars,
                 "output_vars": output_vars,
-                "metadata": metadata
-            }
+                "metadata": metadata,
+            },
         )
         if response.status_code != 200:
             raise Exception(f"Failed to create prompt version: {response.text}")
@@ -729,12 +730,12 @@ class Worker:
         self,
         prompt_name: str,
         messages: List[Dict[str, Any]],
-        model: str = 'gpt-4o-mini',
+        model: str = "gpt-4o-mini",
         temperature: float = 0.0,
         response_format: Optional[ResponseFormat] = None,
         input_vars: Optional[Dict[str, Any]] = None,
         output_vars: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         response = await self.async_api_client.execute(
             self.api_key,
@@ -748,13 +749,15 @@ class Worker:
                 "response_format": response_format,
                 "input_vars": input_vars,
                 "output_vars": output_vars,
-                "metadata": metadata
-            }
+                "metadata": metadata,
+            },
         )
         if response.status_code != 200:
             raise Exception(f"Failed to create prompt version: {response.text}")
-    
-    def fetch_prompt_version(self, prompt_name: str, version: Union[str, int]) -> PromptVersion:
+
+    def fetch_prompt_version(
+        self, prompt_name: str, version: Union[str, int]
+    ) -> PromptVersion:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
@@ -766,7 +769,9 @@ class Worker:
         else:
             raise Exception(f"Failed to fetch prompt version: {response.text}")
 
-    async def afetch_prompt_version(self, prompt_name: str, version: Union[str, int]) -> PromptVersion:
+    async def afetch_prompt_version(
+        self, prompt_name: str, version: Union[str, int]
+    ) -> PromptVersion:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
@@ -797,7 +802,7 @@ class Worker:
         )
         if response.status_code != 200:
             raise Exception(f"Failed to delete prompt version: {response.text}")
-    
+
     def list_prompt_versions(self, prompt_name: int) -> List[PromptVersion]:
         response = self.api_client.execute(
             self.api_key,
