@@ -40,7 +40,8 @@ from weavel._constants import BACKEND_SERVER_URL
 from weavel._buffer_storage import BufferStorage
 from weavel._api_client import APIClient, AsyncAPIClient
 from weavel.utils import logger
-from weavel.types.datasets import DatasetItem, Dataset
+from weavel.types import DatasetItem, Dataset, Prompt, PromptVersion
+from ape.types import ResponseFormat
 
 
 class Worker:
@@ -577,6 +578,256 @@ class Worker:
         )
         if response.status_code != 200:
             raise Exception(f"Failed to create test: {response.text}")
+
+    # create, fetch, delete, list prompts
+    def create_prompt(
+        self,
+        name: str,
+        description: Optional[str] = None,
+    ) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/prompts",
+            method="POST",
+            json={
+                "name": name,
+                "description": description,
+            },
+        )
+        if response.status_code == 400:
+            raise Exception(f"Prompt {name} already exists")
+        if response.status_code != 200:
+            raise Exception(f"Failed to create prompt: {response.text}")
+
+    async def acreate_prompt(
+        self,
+        name: str,
+        description: Optional[str] = None,
+    ) -> None:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/prompts",
+            method="POST",
+            json={
+                "name": name,
+                "description": description,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to create prompt: {response.text}")
+
+    def fetch_prompt(
+        self,
+        name: str,
+    ) -> Prompt:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{name}",
+            method="GET",
+        )
+
+        if response.status_code == 200:
+            return Prompt(**response.json())
+        else:
+            raise Exception(f"Failed to get prompt: {response.text}")
+
+    async def afetch_prompt(
+        self,
+        name: str,
+    ) -> Prompt:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{name}",
+            method="GET",
+        )
+
+        if response.status_code == 200:
+            return Prompt(**response.json())
+        else:
+            raise Exception(f"Failed to get prompt: {response.text}")
+
+    def delete_prompt(self, name: str) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{name}",
+            method="DELETE",
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to delete prompt: {response.text}")
+
+    async def adelete_prompt(self, name: str) -> None:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{name}",
+            method="DELETE",
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to delete prompt: {response.text}")
+
+    def list_prompts(self) -> List[Prompt]:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/prompts",
+            method="GET",
+        )
+
+        if response.status_code == 200:
+            return [Prompt(**prompt) for prompt in response.json()]
+        else:
+            raise Exception(f"Failed to list prompts: {response.text}")
+
+    async def alist_prompts(self) -> List[Prompt]:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/prompts",
+            method="GET",
+        )
+
+        if response.status_code == 200:
+            return [Prompt(**prompt) for prompt in response.json()]
+        else:
+            raise Exception(f"Failed to list prompts: {response.text}")
+
+    # create, fetch, delete, list prompt versions
+    def create_prompt_version(
+        self,
+        prompt_name: str,
+        messages: List[Dict[str, Any]],
+        model: str = "gpt-4o-mini",
+        temperature: float = 0.0,
+        response_format: Optional[ResponseFormat] = None,
+        input_vars: Optional[Dict[str, Any]] = None,
+        output_vars: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{prompt_name}/versions",
+            method="POST",
+            json={
+                "messages": messages,
+                "model": model,
+                "temperature": temperature,
+                "response_format": response_format,
+                "input_vars": input_vars,
+                "output_vars": output_vars,
+                "metadata": metadata,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to create prompt version: {response.text}")
+
+    async def acreate_prompt_version(
+        self,
+        prompt_name: str,
+        messages: List[Dict[str, Any]],
+        model: str = "gpt-4o-mini",
+        temperature: float = 0.0,
+        response_format: Optional[ResponseFormat] = None,
+        input_vars: Optional[Dict[str, Any]] = None,
+        output_vars: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{prompt_name}/versions",
+            method="POST",
+            json={
+                "messages": messages,
+                "model": model,
+                "temperature": temperature,
+                "response_format": response_format,
+                "input_vars": input_vars,
+                "output_vars": output_vars,
+                "metadata": metadata,
+            },
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to create prompt version: {response.text}")
+
+    def fetch_prompt_version(
+        self, prompt_name: str, version: Union[str, int]
+    ) -> PromptVersion:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{prompt_name}/versions/{version}",
+            method="GET",
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to fetch prompt version: {response.text}")
+
+    async def afetch_prompt_version(
+        self, prompt_name: str, version: Union[str, int]
+    ) -> PromptVersion:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{prompt_name}/versions/{version}",
+            method="GET",
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to fetch prompt version: {response.text}")
+
+    def delete_prompt_version(self, prompt_name: str, version: int) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{prompt_name}/versions/{version}",
+            method="DELETE",
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to delete prompt version: {response.text}")
+
+    async def adelete_prompt_version(self, prompt_name: str, version: int) -> None:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{prompt_name}/versions/{version}",
+            method="DELETE",
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to delete prompt version: {response.text}")
+
+    def list_prompt_versions(self, prompt_name: int) -> List[PromptVersion]:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{prompt_name}/versions",
+            method="GET",
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to list prompt versions: {response.text}")
+
+    async def alist_prompt_versions(self, prompt_name: str) -> List[PromptVersion]:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/prompts/{prompt_name}/versions",
+            method="GET",
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to list prompt versions: {response.text}")
 
     def send_requests(
         self,
