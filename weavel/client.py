@@ -13,14 +13,13 @@ from weavel.types import ResponseFormat
 from dotenv import load_dotenv
 from weavel._worker import Worker
 
-# from weavel.types.instances import Session, Span, Trace
 from weavel.object_clients import (
     GenerationClient,
     SessionClient,
     SpanClient,
     TraceClient,
 )
-from weavel.types.datasets import Dataset, DatasetItem, Prompt, PromptVersion
+from weavel.types import Dataset, DatasetItem, Prompt, PromptVersion
 
 load_dotenv()
 
