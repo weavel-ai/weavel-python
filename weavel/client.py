@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import time
 from typing import Callable, Dict, List, Optional, Any, Union
 from uuid import uuid4
-from weavel.types.response_format import ResponseFormat
+from weavel.types import ResponseFormat
 
 from dotenv import load_dotenv
 from weavel._worker import Worker

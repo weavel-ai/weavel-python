@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel
-from response_format import ResponseFormat
+from weavel.types import ResponseFormat
 
 class DatasetItem(BaseModel):
     uuid: Optional[str] = None
