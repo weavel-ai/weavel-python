@@ -41,7 +41,7 @@ from weavel._buffer_storage import BufferStorage
 from weavel._api_client import APIClient, AsyncAPIClient
 from weavel.utils import logger
 from weavel.types.datasets import DatasetItem, Dataset, Prompt, PromptVersion
-from ape.types import ResponseFormat
+from weavel.types.response_format import ResponseFormat
 
 class Worker:
     _instance = None
