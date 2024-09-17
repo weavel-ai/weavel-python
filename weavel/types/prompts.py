@@ -1,7 +1,15 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Literal
 from pydantic import BaseModel
-from ape.types import ResponseFormat
 
+class JsonSchema(BaseModel):
+    name: str
+    schema: Dict[str, Any]
+    strict: bool = True
+
+
+class ResponseFormat(BaseModel):
+    type: Literal["json_object", "json_schema", "xml"]
+    json_schema: Optional[JsonSchema] = None
 
 class Prompt(BaseModel):
     name: str
