@@ -16,3 +16,4 @@ pytest-asyncio
 pytest-mock
 pytest-cov
 nest_asyncio
+ape-core
