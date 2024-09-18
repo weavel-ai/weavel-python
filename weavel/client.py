@@ -194,6 +194,10 @@ class Weavel:
         metadata: Optional[Dict[str, Any]] = None,
         parent_observation_id: Optional[str] = None,
         prompt_name: Optional[str] = None,
+        model: Optional[str] = None,
+        latency: Optional[float] = None,
+        tokens: Optional[Dict[str, Any]] = None,
+        cost: Optional[float] = None,
     ) -> GenerationClient:
         # if record_id, observation_id, parent_observation_id
         # None, None, None -> ValueError
@@ -217,6 +221,10 @@ class Weavel:
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
                 prompt_name=prompt_name,
+                model=model,
+                latency=latency,
+                tokens=tokens,
+                cost=cost,
             )
 
         if record_id is not None or (
@@ -252,6 +260,10 @@ class Weavel:
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
                 prompt_name=prompt_name,
+                model=model,
+                latency=latency,
+                tokens=tokens,
+                cost=cost,
                 weavel_client=self._worker,
             )
         else:

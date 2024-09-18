@@ -9,11 +9,15 @@ import time
 from weavel._worker import Worker
 
 pricing = {
-    "gpt-4o": {"input": 0.000005, "output": 0.000015},
+    "gpt-4o": {"input": 0.0000025, "output": 0.00001},
     "gpt-4o-2024-08-06": {"input": 0.0000025, "output": 0.00001},
     "gpt-4o-2024-05-13": {"input": 0.000005, "output": 0.000015},
     "gpt-4o-mini": {"input": 0.00000015, "output": 0.0000006},
     "gpt-4o-mini-2024-07-18": {"input": 0.00000015, "output": 0.0000006},
+    "o1-preview": {"input": 0.000015, "output": 0.000060},
+    "o1-preview-2024-09-12": {"input": 0.000015, "output": 0.000060},
+    "o1-mini": {"input": 0.000003, "output": 0.000012},
+    "o1-mini-2024-09-12": {"input": 0.000003, "output": 0.000012},
 }
 
 DEFAULT_PARAMS = {
@@ -209,14 +213,26 @@ class WeavelOpenAI(OpenAI):
 
                 end_time = time.time()
                 latency = end_time - start_time
-                accumulated_response["latency"] = round(latency, 6)
+                latency = round(latency, 6)
 
                 model = accumulated_response["model"]
                 usage = accumulated_response["usage"]
                 cost = calculate_cost(model, usage)
-                accumulated_response["cost"] = cost
+                metadata = {}
+                # add every kwargs except messages, model into metadata
+                for key, value in kwargs.items():
+                    if key not in ["messages", "model"]:
+                        metadata[key] = value
 
-                self._capture_generation(inputs=kwargs, outputs=accumulated_response)
+                self._capture_generation(
+                    outputs=accumulated_response,
+                    messages=kwargs.get("messages", []),
+                    model=model,
+                    latency=latency,
+                    tokens=usage,
+                    cost=cost,
+                    metadata=metadata,
+                )
 
             def _handle_non_streaming(self, *args, **kwargs):
                 start_time = time.time()
@@ -234,20 +250,35 @@ class WeavelOpenAI(OpenAI):
                     "usage": response.usage.model_dump() if response.usage else None,
                     "service_tier": response.service_tier,
                     "system_fingerprint": response.system_fingerprint,
-                    "latency": latency,
                 }
 
                 # Calculate and add cost
                 cost = calculate_cost(response.model, formatted_response["usage"])
-                formatted_response["cost"] = cost
+                metadata = {}
+                # add every kwargs except messages, model into metadata
+                for key, value in kwargs.items():
+                    if key not in ["messages", "model"]:
+                        metadata[key] = value
 
-                # TODO: models, latency, cost shouldn't be logged as inputs. Should have separate fields for each.
-                self._capture_generation(inputs=kwargs, outputs=formatted_response)
+                self._capture_generation(
+                    messages=kwargs.get("messages", []),
+                    model=response.model,
+                    latency=latency,
+                    tokens=formatted_response["usage"],
+                    cost=cost,
+                    metadata=metadata,
+                    outputs=formatted_response,
+                )
                 return response
 
             def _capture_generation(
                 self,
-                inputs,
+                messages,
+                model,
+                latency,
+                tokens,
+                cost,
+                metadata,
                 outputs,
             ):
                 self._worker.capture_generation(
@@ -255,7 +286,12 @@ class WeavelOpenAI(OpenAI):
                     created_at=datetime.now(timezone.utc),
                     name=self.header.get("name", "OpenAI Chat"),
                     prompt_name=self.header.get("prompt_name", None),
-                    inputs=inputs,
+                    messages=messages,
+                    model=model,
+                    latency=latency,
+                    tokens=tokens,
+                    cost=cost,
+                    metadata=metadata,
                     outputs=outputs,
                 )
 
@@ -291,20 +327,27 @@ class WeavelOpenAI(OpenAI):
                     "usage": response.usage.model_dump() if response.usage else None,
                     "service_tier": response.service_tier,
                     "system_fingerprint": response.system_fingerprint,
-                    "latency": latency,
                 }
 
                 # Calculate and add cost
                 cost = calculate_cost(response.model, formatted_response["usage"])
-                formatted_response["cost"] = cost
+                metadata = {}
+                # add every kwargs except messages, model into metadata
+                for key, value in kwargs.items():
+                    if key not in ["messages", "model"]:
+                        metadata[key] = value
 
-                # TODO: models, latency, cost shouldn't be logged as inputs. Should have separate fields for each.
                 self._worker.capture_generation(
                     observation_id=str(uuid4()),
                     created_at=datetime.now(timezone.utc),
                     name=header.get("name", "OpenAI Beta Chat Parse"),
                     prompt_name=header.get("prompt_name", None),
-                    inputs=kwargs,
+                    messages=kwargs.get("messages", []),
+                    model=response.model,
+                    latency=latency,
+                    tokens=formatted_response["usage"],
+                    cost=cost,
+                    metadata=metadata,
                     outputs=formatted_response,
                 )
 
@@ -439,16 +482,26 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
 
                 end_time = time.time()
                 latency = end_time - start_time
-                accumulated_response["latency"] = round(latency, 6)
+                latency = round(latency, 6)
 
                 model = accumulated_response["model"]
                 usage = accumulated_response["usage"]
                 cost = calculate_cost(model, usage)
-                accumulated_response["cost"] = cost
-
+                metadata = {}
+                # add every kwargs except messages, model into metadata
+                for key, value in kwargs.items():
+                    if key not in ["messages", "model"]:
+                        metadata[key] = value
+                        
                 if self._worker.capture_generation is not None:
                     await self._capture_generation(
-                        inputs=kwargs, outputs=accumulated_response
+                        messages=kwargs.get("messages", []),
+                        model=model,
+                        latency=latency,
+                        tokens=usage,
+                        cost=cost,
+                        metadata=metadata,
+                        outputs=accumulated_response,
                     )
 
             async def _handle_non_streaming(self, *args, **kwargs):
@@ -467,24 +520,38 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                     "usage": response.usage.model_dump() if response.usage else None,
                     "service_tier": response.service_tier,
                     "system_fingerprint": response.system_fingerprint,
-                    "latency": latency,
                 }
 
                 # Calculate and add cost
                 cost = calculate_cost(response.model, formatted_response["usage"])
-                formatted_response["cost"] = cost
+                metadata = {}
+                # add every kwargs except messages, model into metadata
+                for key, value in kwargs.items():
+                    if key not in ["messages", "model"]:
+                        metadata[key] = value
 
                 if self._worker.capture_generation is None:
                     return response
 
                 await self._capture_generation(
-                    inputs=kwargs, outputs=formatted_response
+                    messages=kwargs.get("messages", []),
+                    model=response.model,
+                    latency=latency,
+                    tokens=formatted_response["usage"],
+                    cost=cost,
+                    metadata=metadata,
+                    outputs=formatted_response,
                 )
                 return response
 
             async def _capture_generation(
                 self,
-                inputs,
+                messages,
+                model,
+                latency,
+                tokens,
+                cost,
+                metadata,
                 outputs,
             ):
                 await self._worker.acapture_generation(
@@ -492,7 +559,12 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
                     created_at=datetime.now(timezone.utc),
                     name=self.header.get("name", "AsyncOpenAI Chat"),
                     prompt_name=self.header.get("prompt_name", None),
-                    inputs=inputs,
+                    messages=messages,
+                    model=model,
+                    latency=latency,
+                    tokens=tokens,
+                    cost=cost,
+                    metadata=metadata,
                     outputs=outputs,
                 )
 
@@ -532,14 +604,23 @@ class AsyncWeavelOpenAI(AsyncOpenAI):
 
                 # Calculate and add cost
                 cost = calculate_cost(response.model, formatted_response["usage"])
-                formatted_response["cost"] = cost
+                metadata = {}
+                # add every kwargs except messages, model into metadata
+                for key, value in kwargs.items():
+                    if key not in ["messages", "model"]:
+                        metadata[key] = value
 
                 await self._worker.acapture_generation(
                     observation_id=str(uuid4()),
                     created_at=datetime.now(timezone.utc),
                     name=header.get("name", "Async OpenAI Beta Chat Parse"),
                     prompt_name=header.get("prompt_name", None),
-                    inputs=kwargs,
+                    messages=kwargs.get("messages", []),
+                    model=response.model,
+                    latency=latency,
+                    tokens=formatted_response["usage"],
+                    cost=cost,
+                    metadata=metadata,
                     outputs=formatted_response,
                 )
                 return response

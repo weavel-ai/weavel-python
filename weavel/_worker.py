@@ -349,6 +349,7 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         model: Optional[str] = None,
         latency: Optional[float] = None,
+        tokens: Optional[Dict[str, Any]] = None,
         cost: Optional[float] = None,
         parent_observation_id: Optional[str] = None,
         prompt_name: Optional[str] = None,
@@ -365,6 +366,7 @@ class Worker:
                     messages=messages,
                     model=model,
                     latency=latency,
+                    tokens=tokens,
                     cost=cost,
                     metadata=metadata,
                     parent_observation_id=parent_observation_id,
@@ -386,6 +388,10 @@ class Worker:
         metadata: Optional[Dict[str, str]] = None,
         parent_observation_id: Optional[str] = None,
         prompt_name: Optional[str] = None,
+        model: Optional[str] = None,
+        latency: Optional[float] = None,
+        tokens: Optional[Dict[str, Any]] = None,
+        cost: Optional[float] = None,
     ):
         if not self.testing:
             request = CaptureGenerationRequest(
@@ -398,6 +404,10 @@ class Worker:
                     outputs=outputs,
                     messages=messages,
                     metadata=metadata,
+                    model=model,
+                    latency=latency,
+                    tokens=tokens,
+                    cost=cost,
                     parent_observation_id=parent_observation_id,
                     prompt_name=prompt_name,
                 )

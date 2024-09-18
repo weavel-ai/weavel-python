@@ -30,6 +30,10 @@ class Generation(Observation):
     inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
     outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None
     ended_at: Optional[datetime] = None
+    model: Optional[str] = None
+    latency: Optional[float] = None
+    tokens: Optional[Dict[str, Any]] = None
+    cost: Optional[float] = None
 
 
 class Log(Observation):
