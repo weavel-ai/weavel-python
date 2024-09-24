@@ -837,7 +837,243 @@ class Worker:
             return response.json()
         else:
             raise Exception(f"Failed to list prompt versions: {response.text}")
+        
+    def optimize_ape(
+        self,
+        dataset_name: str,
+        prompt_name: str,
+        version: Optional[str] = None,
+        input_vars: Optional[Dict[str, Any]] = None,
+        output_vars: Optional[Dict[str, Any]] = None,
+        response_format: Optional[ResponseFormat] = None,
+        evaluation_type: Literal["TEMPLATE", "CUSTOM"] = "TEMPLATE",
+        evaluation_metric: Optional[Dict[str, Any]] = None,
+        description: Optional[str] = None,
+    ) -> None:
+        """
+        Optimize Ape.
 
+        Args:
+            dataset_name (str): The name of the dataset to use for optimization.
+            prompt_name (str): The name of the prompt to optimize.
+            version (Optional[str]): The version of the prompt to use. If not provided, the latest version will be used.
+            input_vars (Optional[Dict[str, Any]]): The input variables for the prompt.
+            output_vars (Optional[Dict[str, Any]]): The output variables for the prompt.
+            response_format (Optional[ResponseFormat]): The response format for the prompt.
+            evaluation_type (str): The type of evaluation to use. Defaults to "TEMPLATE".
+            evaluation_metric (Optional[Dict[str, Any]]): The evaluation metric to use.
+            description (Optional[str]): A description of the optimization task.
+        """
+        body = {
+            "dataset_name": dataset_name,
+            "prompt_name": prompt_name,
+            "version": version,
+            "input_vars": input_vars,
+            "output_vars": output_vars,
+            "response_format": response_format.model_dump() if response_format else None,
+            "evaluation_type": evaluation_type,
+            "evaluation_metric": evaluation_metric,
+            "description": description,
+        }
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/ape/optimize",
+            method="POST",
+            json=body,
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to optimize Ape: {response.text}")
+
+    async def aoptimize_ape(
+        self,
+        dataset_name: str,
+        prompt_name: str,
+        version: Optional[str] = None,
+        input_vars: Optional[Dict[str, Any]] = None,
+        output_vars: Optional[Dict[str, Any]] = None,
+        response_format: Optional[ResponseFormat] = None,
+        evaluation_type: Literal["TEMPLATE", "CUSTOM"] = "TEMPLATE",
+        evaluation_metric: Optional[Dict[str, Any]] = None,
+        description: Optional[str] = None,
+    ) -> None:
+        """
+        Optimize Ape asynchronously.
+
+        Args:
+            dataset_name (str): The name of the dataset to use for optimization.
+            prompt_name (str): The name of the prompt to optimize.
+            version (Optional[str]): The version of the prompt to use. If not provided, the latest version will be used.
+            input_vars (Optional[Dict[str, Any]]): The input variables for the prompt.
+            output_vars (Optional[Dict[str, Any]]): The output variables for the prompt.
+            response_format (Optional[ResponseFormat]): The response format for the prompt.
+            evaluation_type (str): The type of evaluation to use. Defaults to "TEMPLATE".
+            evaluation_metric (Optional[Dict[str, Any]]): The evaluation metric to use.
+            description (Optional[str]): A description of the optimization task.
+        """
+        body = {
+            "dataset_name": dataset_name,
+            "prompt_name": prompt_name,
+            "version": version,
+            "input_vars": input_vars,
+            "output_vars": output_vars,
+            "response_format": response_format.model_dump() if response_format else None,
+            "evaluation_type": evaluation_type,
+            "evaluation_metric": evaluation_metric,
+            "description": description,
+        }
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/ape/optimize",
+            method="POST",
+            json=body,
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to optimize Ape: {response.text}")
+
+    def schedule_ape(
+        self,
+        prompt_name: str,
+        dataset_name: str,
+        interval: int,
+        trigger_threshold: float,
+        ignore_keys: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Schedule an Ape task.
+
+        Args:
+            prompt_name (str): The name of the prompt to schedule.
+            dataset_name (str): The name of the dataset to use.
+            interval (int): The interval in days between runs.
+            trigger_threshold (float): The threshold to trigger the Ape task.
+            ignore_keys (Optional[List[str]]): Keys to ignore in the dataset.
+
+        Returns:
+            Dict[str, Any]: The created Ape schedule.
+        """
+        body = {
+            "prompt_name": prompt_name,
+            "dataset_name": dataset_name,
+            "interval": interval,
+            "trigger_threshold": trigger_threshold,
+            "ignore_keys": ignore_keys,
+        }
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/ape/schedule",
+            method="POST",
+            json=body,
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to schedule Ape task: {response.text}")
+
+    async def aschedule_ape(
+        self,
+        prompt_name: str,
+        dataset_name: str,
+        interval: int,
+        trigger_threshold: float,
+        ignore_keys: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Schedule an Ape task asynchronously.
+
+        Args:
+            prompt_name (str): The name of the prompt to schedule.
+            dataset_name (str): The name of the dataset to use.
+            interval (int): The interval in days between runs.
+            trigger_threshold (float): The threshold to trigger the Ape task.
+            ignore_keys (Optional[List[str]]): Keys to ignore in the dataset.
+
+        Returns:
+            Dict[str, Any]: The created Ape schedule.
+        """
+        body = {
+            "prompt_name": prompt_name,
+            "dataset_name": dataset_name,
+            "interval": interval,
+            "trigger_threshold": trigger_threshold,
+            "ignore_keys": ignore_keys,
+        }
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/ape/schedule",
+            method="POST",
+            json=body,
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to schedule Ape task: {response.text}")
+
+    def list_ape_schedule(
+        self,
+        prompt_name: Optional[str] = None,
+        dataset_name: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        List Ape schedules.
+
+        Args:
+            prompt_name (Optional[str]): Filter schedules by prompt name.
+            dataset_name (Optional[str]): Filter schedules by dataset name.
+
+        Returns:
+            List[Dict[str, Any]]: The list of Ape schedules.
+        """
+        body = {
+            "prompt_name": prompt_name,
+            "dataset_name": dataset_name,
+        }
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/ape/list",
+            method="POST",
+            json=body,
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to list Ape schedules: {response.text}")
+
+    async def alist_ape_schedule(
+        self,
+        prompt_name: Optional[str] = None,
+        dataset_name: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        List Ape schedules asynchronously.
+
+        Args:
+            prompt_name (Optional[str]): Filter schedules by prompt name.
+            dataset_name (Optional[str]): Filter schedules by dataset name.
+
+        Returns:
+            List[Dict[str, Any]]: The list of Ape schedules.
+        """
+        body = {
+            "prompt_name": prompt_name,
+            "dataset_name": dataset_name,
+        }
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            "/ape/list",
+            method="POST",
+            json=body,
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Failed to list Ape schedules: {response.text}")
+        
     def send_requests(
         self,
         requests: List[UnionRequest],
