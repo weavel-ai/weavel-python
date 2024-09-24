@@ -277,6 +277,10 @@ class CaptureGenerationBody(CaptureObservationBody):
         default=None,
         description="The latency of the generation. Optional.",
     )
+    tokens: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="The tokens of the generation. Optional.",
+    )
     cost: Optional[float] = Field(
         default=None,
         description="The cost of the generation. Optional.",
