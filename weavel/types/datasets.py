@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel
 
-
 class DatasetItem(BaseModel):
     uuid: Optional[str] = None
     inputs: Union[Dict[str, Any], List[Any], str]

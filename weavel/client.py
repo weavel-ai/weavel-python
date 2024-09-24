@@ -8,18 +8,18 @@ from datetime import datetime, timezone
 import time
 from typing import Callable, Dict, List, Optional, Any, Union
 from uuid import uuid4
+from weavel.types import ResponseFormat
 
 from dotenv import load_dotenv
 from weavel._worker import Worker
 
-# from weavel.types.instances import Session, Span, Trace
 from weavel.object_clients import (
     GenerationClient,
     SessionClient,
     SpanClient,
     TraceClient,
 )
-from weavel.types.datasets import Dataset, DatasetItem
+from weavel.types import Dataset, DatasetItem, Prompt, PromptVersion
 
 load_dotenv()
 
@@ -190,9 +190,14 @@ class Weavel:
         name: Optional[str] = None,
         inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        messages: Optional[List[Dict[str, str]]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         parent_observation_id: Optional[str] = None,
         prompt_name: Optional[str] = None,
+        model: Optional[str] = None,
+        latency: Optional[float] = None,
+        tokens: Optional[Dict[str, Any]] = None,
+        cost: Optional[float] = None,
     ) -> GenerationClient:
         # if record_id, observation_id, parent_observation_id
         # None, None, None -> ValueError
@@ -212,15 +217,14 @@ class Weavel:
                 name=name,
                 inputs=inputs,
                 outputs=outputs,
+                messages=messages,
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
                 prompt_name=prompt_name,
-            )
-        if (
-            record_id or (record_id is None and parent_observation_id)
-        ) and name is None:
-            raise ValueError(
-                "If you want to create a new generation, you must provide a name."
+                model=model,
+                latency=latency,
+                tokens=tokens,
+                cost=cost,
             )
 
         if record_id is not None or (
@@ -240,6 +244,7 @@ class Weavel:
                     name=name,
                     inputs=inputs,
                     outputs=outputs,
+                    messages=messages,
                     metadata=metadata,
                     parent_observation_id=parent_observation_id,
                     prompt_name=prompt_name,
@@ -251,9 +256,14 @@ class Weavel:
                 name=name,
                 inputs=inputs,
                 outputs=outputs,
+                messages=messages,
                 metadata=metadata,
                 parent_observation_id=parent_observation_id,
                 prompt_name=prompt_name,
+                model=model,
+                latency=latency,
+                tokens=tokens,
+                cost=cost,
                 weavel_client=self._worker,
             )
         else:
@@ -427,6 +437,287 @@ class Weavel:
 
         return await self._worker.afetch_dataset(name)
 
+    # create, fetch, delete, and list prompts
+    def create_prompt(
+        self,
+        name: str,
+        description: Optional[str] = None,
+    ) -> None:
+        """Upload a prompt to the Weavel service.
+
+        Args:
+            name (str): The name of the prompt.
+            description (str): The description of the prompt.
+        """
+        if self.testing:
+            return
+
+        self._worker.create_prompt(
+            name=name,
+            description=description,
+        )
+
+    async def acreate_prompt(
+        self,
+        name: str,
+        description: Optional[str] = None,
+    ) -> None:
+        """Upload a prompt to the Weavel service.
+
+        Args:
+            name (str): The name of the prompt.
+            description (str): The description of the prompt.
+        """
+        if self.testing:
+            return
+
+        await self._worker.acreate_prompt(
+            name=name,
+            description=description,
+        )
+
+    def fetch_prompt(self, name: str) -> Prompt:
+        """
+        Retrieves a prompt with the given name.
+
+        Args:
+            name (str): The name of the prompt to retrieve.
+
+        Returns:
+            Prompt: The retrieved prompt.
+        """
+        if self.testing:
+            return {}
+
+        return self._worker.fetch_prompt(name)
+
+    async def afetch_prompt(self, name: str) -> Prompt:
+        """
+        Retrieves a prompt with the given name.
+
+        Args:
+            name (str): The name of the prompt to retrieve.
+
+        Returns:
+            Prompt: The retrieved prompt.
+        """
+        if self.testing:
+            return {}
+
+        return await self._worker.afetch_prompt(name)
+
+    def delete_prompt(self, name: str) -> None:
+        """Delete a prompt from the Weavel service.
+
+        Args:
+            name (str): The name of the prompt to delete.
+        """
+        if self.testing:
+            return
+
+        self._worker.delete_prompt(name=name)
+
+    async def adelete_prompt(self, name: str) -> None:
+        """Delete a prompt from the Weavel service asynchronously.
+
+        Args:
+            name (str): The name of the prompt to delete.
+        """
+        if self.testing:
+            return
+
+        await self._worker.adelete_prompt(name=name)
+
+    def list_prompts(self) -> List[Prompt]:
+        """List all prompts that user created.
+
+        Returns:
+            List[Prompt]: A list of all prompts.
+        """
+        if self.testing:
+            return []
+
+        return self._worker.list_prompts()
+
+    async def alist_prompts(self) -> List[Prompt]:
+        """List all prompts that user created.
+
+        Returns:
+            List[Prompt]: A list of all prompts.
+        """
+        if self.testing:
+            return []
+
+        return await self._worker.alist_prompts()
+
+    # create, fetch, delete, and list prompt versions
+    def create_prompt_version(
+        self,
+        prompt_name: str,
+        messages: List[Dict[str, Any]],
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        response_format: Optional[ResponseFormat] = None,
+        input_vars: Optional[Dict[str, Any]] = None,
+        output_vars: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Create a new version of a prompt.
+
+        Args:
+            prompt_name (str): The name of the prompt.
+            messages (List[Dict[str, Any]]): The messages for the prompt version.
+            model (Optional[str]): The model to use for this prompt version. Default is 'gpt-4o-mini'.
+            temperature (Optional[float]): The temperature setting for the model. Default is 0.0.
+            response_format (Optional[ResponseFormat]): The response format for the prompt.
+            input_vars (Optional[Dict[str, Any]]): The input variables for the prompt.
+            output_vars (Optional[Dict[str, Any]]): The output variables for the prompt.
+            metadata (Optional[Dict[str, Any]]): Additional metadata for the prompt version.
+        """
+        if self.testing:
+            return
+
+        self._worker.create_prompt_version(
+            prompt_name=prompt_name,
+            messages=messages,
+            model=model,
+            temperature=temperature,
+            response_format=response_format,
+            input_vars=input_vars,
+            output_vars=output_vars,
+            metadata=metadata,
+        )
+
+    async def acreate_prompt_version(
+        self,
+        prompt_name: str,
+        messages: List[Dict[str, Any]],
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        response_format: Optional[Dict[str, Any]] = None,
+        input_vars: Optional[Dict[str, Any]] = None,
+        output_vars: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Create a new version of a prompt asynchronously.
+
+        Args:
+            prompt_name (str): The name of the prompt.
+            messages (List[Dict[str, Any]]): The messages for the prompt version.
+            model (Optional[str]): The model to use for this prompt version. Default is 'gpt-4o-mini'.
+            temperature (Optional[float]): The temperature setting for the model. Default is 0.0.
+            response_format (Optional[Dict[str, Any]]): The response format for the prompt.
+            input_vars (Optional[Dict[str, Any]]): The input variables for the prompt.
+            output_vars (Optional[Dict[str, Any]]): The output variables for the prompt.
+            metadata (Optional[Dict[str, Any]]): Additional metadata for the prompt version.
+        """
+        if self.testing:
+            return
+
+        await self._worker.acreate_prompt_version(
+            prompt_name=prompt_name,
+            messages=messages,
+            model=model,
+            temperature=temperature,
+            response_format=response_format,
+            input_vars=input_vars,
+            output_vars=output_vars,
+            metadata=metadata,
+        )
+
+    def fetch_prompt_version(
+        self, prompt_name: str, version: Union[str, int]
+    ) -> PromptVersion:
+        """Fetch a specific version of a prompt.
+
+        Args:
+            prompt_name (str): The name of the prompt.
+            version (Union[str, int]): The version identifier to fetch. Get latest version by version = 'latest'. Otherwise, specify the version number.
+
+        Returns:
+            PromptVersion: The prompt version details.
+        """
+        if self.testing:
+            return PromptVersion()
+
+        return self._worker.fetch_prompt_version(
+            prompt_name=prompt_name, version=version
+        )
+
+    async def afetch_prompt_version(
+        self, prompt_name: str, version: Union[str, int]
+    ) -> PromptVersion:
+        """Fetch a specific version of a prompt asynchronously.
+        Get latest version by version = 'latest'. Otherwise, specify the version number.
+
+        Args:
+            prompt_name (str): The name of the prompt.
+            version (str): The version identifier to fetch.
+
+        Returns:
+            PromptVersion: The prompt version details.
+        """
+        if self.testing:
+            return PromptVersion()
+
+        return await self._worker.afetch_prompt_version(
+            prompt_name=prompt_name, version=version
+        )
+
+    def list_prompt_versions(self, prompt_name: str) -> List[PromptVersion]:
+        """List all versions of a specific prompt.
+
+        Args:
+            prompt_name (str): The name of the prompt.
+
+        Returns:
+            List[PromptVersion]: A list of version identifiers.
+        """
+        if self.testing:
+            return []
+
+        return self._worker.list_prompt_versions(prompt_name=prompt_name)
+
+    async def alist_prompt_versions(self, prompt_name: str) -> List[PromptVersion]:
+        """List all versions of a specific prompt asynchronously.
+
+        Args:
+            prompt_name (str): The name of the prompt.
+
+        Returns:
+            List[PromptVersion]: A list of version identifiers.
+        """
+        if self.testing:
+            return []
+
+        return await self._worker.alist_prompt_versions(prompt_name=prompt_name)
+
+    def delete_prompt_version(self, prompt_name: str, version: str) -> None:
+        """Delete a specific version of a prompt.
+
+        Args:
+            prompt_name (str): The name of the prompt.
+            version (str): The version identifier to delete.
+        """
+        if self.testing:
+            return
+
+        self._worker.delete_prompt_version(prompt_name=prompt_name, version=version)
+
+    async def adelete_prompt_version(self, prompt_name: str, version: str) -> None:
+        """Delete a specific version of a prompt asynchronously.
+
+        Args:
+            prompt_name (str): The name of the prompt.
+            version (str): The version identifier to delete.
+        """
+        if self.testing:
+            return
+
+        await self._worker.adelete_prompt_version(
+            prompt_name=prompt_name, version=version
+        )
+
     def create_dataset_items(
         self,
         dataset_name: str,
@@ -442,8 +733,8 @@ class Weavel:
             return
 
         for item in items:
-            if not isinstance(item, DatasetItem):
-                item = DatasetItem(**item)
+            if isinstance(item, DatasetItem):
+                item = item.model_dump()
 
         self._worker.create_dataset_items(dataset_name, items)
 
@@ -462,8 +753,8 @@ class Weavel:
             return
 
         for item in items:
-            if not isinstance(item, DatasetItem):
-                item = DatasetItem(**item)
+            if isinstance(item, DatasetItem):
+                item = item.model_dump()
 
         await self._worker.acreate_dataset_items(dataset_name, items)
 

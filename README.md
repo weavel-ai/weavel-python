@@ -23,7 +23,7 @@ You can find our full documentation [here](https://weavel.ai/docs/python-sdk).
 
 ## How to use
 
-### Basic Usage
+### Option 1: Using OpenAI wrapper
 
 ```python
 from weavel import WeavelOpenAI as OpenAI
@@ -42,7 +42,40 @@ response = openai.chat.completions.create(
 
 ```
 
-### Advanced Usage
+### Option 2: Logging inputs/outputs of LLM calls
+
+```python
+from weavel import Weavel
+from openai import OpenAI
+from pydantic import BaseModel
+
+openai = OpenAI()
+# initialize Weavel
+weavel = Weavel()
+
+class Answer(BaseModel):
+    reasoning: str
+    answer: str
+
+question = "What is x if x + 2 = 4?"
+response = openai.beta.chat.completions.parse(
+    model="gpt-4o-2024-08-06",
+    messages=[
+        {"role": "system", "content": "You are a math teacher."},
+        {"role": "user", "content": question}
+    ],
+    response_format=Answer
+).choices[0].message.parsed
+
+# log the generation
+weavel.generation(
+    name="solve-math", # optional
+    inputs={"question": question},
+    outputs=response.model_dump()
+)
+```
+
+### Option 3 (Advanced Usage): OTEL-compatible trace logging
 
 ```python
 from weavel import Weavel

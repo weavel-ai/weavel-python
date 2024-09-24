@@ -54,9 +54,14 @@ class ObjectClient(BaseClient):
         name: str,
         inputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
         outputs: Optional[Union[Dict[str, Any], List[Any], str]] = None,
+        messages: Optional[List[Message]] = None,
         observation_id: Optional[str] = None,
         created_at: Optional[datetime] = None,
         metadata: Optional[Dict[str, str]] = None,
+        model: Optional[str] = None,
+        latency: Optional[float] = None,
+        tokens: Optional[Dict[str, Any]] = None,
+        cost: Optional[float] = None,
     ) -> "GenerationClient":
         if observation_id is None:
             observation_id = str(uuid4())
@@ -70,10 +75,15 @@ class ObjectClient(BaseClient):
             name=name,
             inputs=inputs,
             outputs=outputs,
+            messages=messages,
             metadata=metadata,
             parent_observation_id=(
                 self.observation_id if isinstance(self, SpanClient) else None
             ),
+            model=model,
+            latency=latency,
+            tokens=tokens,
+            cost=cost,
         )
         generation_client = GenerationClient(
             **generation.model_dump(),

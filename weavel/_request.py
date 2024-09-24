@@ -152,8 +152,13 @@ class CaptureGenerationRequest(IngestionBody):
                 "parent_observation_id": self.body.parent_observation_id,
                 "inputs": serialized_inputs,
                 "outputs": serialized_outputs,
+                "messages": self.body.messages,
                 "metadata": self.body.metadata,
                 "prompt_name": self.body.prompt_name,
+                "model": self.body.model,
+                "latency": self.body.latency,
+                "tokens": self.body.tokens,
+                "cost": self.body.cost,
             },
         }
 
