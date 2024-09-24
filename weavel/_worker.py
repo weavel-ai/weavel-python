@@ -726,7 +726,9 @@ class Worker:
                 "messages": messages,
                 "model": model,
                 "temperature": temperature,
-                "response_format": response_format,
+                "response_format": (
+                    response_format.model_dump() if response_format else None
+                ),
                 "input_vars": input_vars,
                 "output_vars": output_vars,
                 "metadata": metadata,
@@ -755,7 +757,9 @@ class Worker:
                 "messages": messages,
                 "model": model,
                 "temperature": temperature,
-                "response_format": response_format,
+                "response_format": (
+                    response_format.model_dump() if response_format else None
+                ),
                 "input_vars": input_vars,
                 "output_vars": output_vars,
                 "metadata": metadata,
