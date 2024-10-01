@@ -33,6 +33,7 @@ setup(
         "watchdog",
         "readerwriterlock",
         "nest_asyncio",
+        "tenacity",
     ],
     python_requires=">=3.8.10",
     keywords=[
