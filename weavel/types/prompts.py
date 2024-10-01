@@ -1,23 +1,18 @@
 from typing import Any, Dict, List, Optional, Union, Literal
 from pydantic import BaseModel
-
-class JsonSchema(BaseModel):
-    name: str
-    schema: Dict[str, Any]
-    strict: bool = True
+from ape.common.types import ResponseFormat
 
 
-class ResponseFormat(BaseModel):
-    type: Literal["json_object", "json_schema", "xml"]
-    json_schema: Optional[JsonSchema] = None
-
-class Prompt(BaseModel):
+class WvPrompt(BaseModel):
+    uuid: Optional[str] = None
     name: str
     description: Optional[str] = None
     created_at: str
 
 
-class PromptVersion(BaseModel):
+class WvPromptVersion(BaseModel):
+    uuid: Optional[str] = None
+    prompt_uuid: Optional[str] = None
     version: int
     messages: List[Dict[str, Any]]
     model: str
