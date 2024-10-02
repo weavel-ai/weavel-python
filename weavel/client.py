@@ -1089,4 +1089,4 @@ class Weavel:
 
                 logger.info("Optimization complete!")
                 logger.info(f"View all prompts at: {res["url"]}")
-                return res["optimized_prompt"]
+                return Prompt(**res["optimized_prompt"])
