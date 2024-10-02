@@ -10,34 +10,72 @@ from rich.theme import Theme
 
 console = Console(width=200, theme=Theme({"logging.level": "bold"}))
 
+LOGGER_NAME = "weavel"
+
 
 class TypedBoundLogger(structlog.stdlib.BoundLogger):
-    def msg(self, message: str, **kwargs: t.Any) -> None:
-        """Log a message."""
-        self._proxy_to_logger("msg", message, **kwargs)
+    def msg(self, event: str, *args: t.Any, **kwargs: t.Any) -> None:
+        """Log a message.
 
-    def debug(self, event: str, **kwargs: t.Any) -> None:
-        """Log a debug message."""
-        self._proxy_to_logger("debug", event, **kwargs)
+        Args:
+            event (str): The main log message or event description.
+            *args: Additional positional arguments to be logged.
+            **kwargs: Additional keyword arguments to be logged.
+        """
+        self._proxy_to_logger("msg", event, *args, **kwargs)
 
-    def info(self, event: str, **kwargs: t.Any) -> None:
-        """Log an info message."""
-        self._proxy_to_logger("info", event, **kwargs)
+    def debug(self, event: str, *args: t.Any, **kwargs: t.Any) -> None:
+        """Log a debug message.
 
-    def warning(self, event: str, **kwargs: t.Any) -> None:
-        """Log a warning message."""
-        self._proxy_to_logger("warning", event, **kwargs)
+        Args:
+            event (str): The main log message or event description.
+            *args: Additional positional arguments to be logged.
+            **kwargs: Additional keyword arguments to be logged.
+        """
+        self._proxy_to_logger("debug", event, *args, **kwargs)
 
-    def error(self, event: str, **kwargs: t.Any) -> None:
-        """Log an error message."""
-        self._proxy_to_logger("error", event, **kwargs)
+    def info(self, event: str, *args: t.Any, **kwargs: t.Any) -> None:
+        """Log an info message.
 
-    def critical(self, event: str, **kwargs: t.Any) -> None:
-        """Log a critical message."""
-        self._proxy_to_logger("critical", event, **kwargs)
+        Args:
+            event (str): The main log message or event description.
+            *args: Additional positional arguments to be logged.
+            **kwargs: Additional keyword arguments to be logged.
+        """
+        self._proxy_to_logger("info", event, *args, **kwargs)
+
+    def warning(self, event: str, *args: t.Any, **kwargs: t.Any) -> None:
+        """Log a warning message.
+
+        Args:
+            event (str): The main log message or event description.
+            *args: Additional positional arguments to be logged.
+            **kwargs: Additional keyword arguments to be logged.
+        """
+        self._proxy_to_logger("warning", event, *args, **kwargs)
+
+    def error(self, event: str, *args: t.Any, **kwargs: t.Any) -> None:
+        """Log an error message.
+
+        Args:
+            event (str): The main log message or event description.
+            *args: Additional positional arguments to be logged.
+            **kwargs: Additional keyword arguments to be logged.
+        """
+        self._proxy_to_logger("error", event, *args, **kwargs)
+
+    def critical(self, event: str, *args: t.Any, **kwargs: t.Any) -> None:
+        """Log a critical message.
+
+        Args:
+            event (str): The main log message or event description.
+            *args: Additional positional arguments to be logged.
+            **kwargs: Additional keyword arguments to be logged.
+        """
+        self._proxy_to_logger("critical", event, *args, **kwargs)
 
 
-logger: TypedBoundLogger = structlog.get_logger("weavel")
+logger: TypedBoundLogger = structlog.get_logger(LOGGER_NAME)
 
 
 class LogSettings:
@@ -107,7 +145,7 @@ class LogSettings:
         self._configure_structlog()
 
         # Grab the weavel logger
-        log = logging.getLogger("weavel")
+        log = logging.getLogger(LOGGER_NAME)
         for handler in log.handlers[:]:
             log.removeHandler(handler)
 
@@ -133,12 +171,13 @@ level = os.environ.get("WEAVEL_LOG_LEVEL", "info").upper()
 
 # Set Defaults
 def show_logging(level: str = level) -> None:
-    weavel_logger = logging.getLogger("weavel")
+    weavel_logger = logging.getLogger(LOGGER_NAME)
     weavel_logger.setLevel(level)
     weavel_logger.handlers = [
         RichHandler(console=console, rich_tracebacks=True, markup=True)
     ]
 
 
+show_logging(level)
 settings = LogSettings(output_type="str", method="console", file_name=None)
 set_log_output = settings.set_log_output
