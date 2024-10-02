@@ -4,9 +4,7 @@ from typing import Dict
 import requests
 
 import httpx
-from rich import print
-
-from weavel.utils.crypto import decrypt_message
+from weavel.utils import logger
 
 
 class APIClient:
@@ -78,6 +76,7 @@ class APIClient:
             response = requests.request(
                 method,
                 url,
+                timeout=30,
                 headers=headers,
                 params=params,
                 data=data,
@@ -87,7 +86,7 @@ class APIClient:
             if not response:
                 print(f"[red]Error: {response}[/red]")
                 return
-            if response.status_code == 200:
+            if response.ok:
                 return response
             elif response.status_code == 403:
                 if not ignore_auth_error:
@@ -144,7 +143,7 @@ class AsyncAPIClient:
         json: Dict = None,
         ignore_auth_error: bool = False,
         **kwargs,
-    ) -> requests.Response:
+    ) -> httpx.Response:
         """
         Executes the API request with the decrypted API key in the headers.
 
@@ -181,20 +180,15 @@ class AsyncAPIClient:
                     json=json,
                     **kwargs,
                 )
-            if not response:
-                print(f"[red]Error: {response}[/red]")
-            if response.status_code == 200:
-                return response
-            elif response.status_code == 403:
+                response.raise_for_status()
+            if response.status_code == 403:
                 if not ignore_auth_error:
-                    print("[red]Authentication failed.[/red]")
-            else:
-                print(f"[red]Error: {response}[/red]")
+                    logger.error("Authentication failed.")
 
             return response
         except requests.exceptions.ConnectionError:
-            print("[red]Could not connect to the WEAVEL API.[/red]")
+            logger.error("Could not connect to the WEAVEL API.")
         except requests.exceptions.Timeout:
-            print("[red]The request timed out.[/red]")
+            logger.error("The request timed out.")
         except Exception as exception:
-            print(f"[red]Error: {exception}[/red]")
+            raise exception

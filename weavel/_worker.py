@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Awaitable, Dict, List, Literal, Optional, Union
 from threading import Thread
 from concurrent.futures import Future, ThreadPoolExecutor
+from pydantic import BaseModel
+from openai.lib._parsing._completions import type_to_response_format_param
 
 from weavel._request import (
     CaptureSessionRequest,
@@ -36,11 +38,12 @@ from weavel._body import (
     CaptureTestObservationBody,
 )
 
-from weavel._constants import BACKEND_SERVER_URL
+from weavel._constants import ENDPOINT_URL
 from weavel._buffer_storage import BufferStorage
 from weavel._api_client import APIClient, AsyncAPIClient
 from weavel.utils import logger
-from weavel.types import DatasetItem, Dataset, Prompt, PromptVersion, ResponseFormat
+from weavel.types import WvDatasetItem, WvDataset, WvPrompt, WvPromptVersion
+from ape.common.types import ResponseFormat
 
 
 class Worker:
@@ -61,7 +64,7 @@ class Worker:
     ) -> None:
         if not hasattr(self, "is_initialized"):
             self.api_key = api_key
-            self.endpoint = BACKEND_SERVER_URL if not base_url else base_url
+            self.endpoint = ENDPOINT_URL if not base_url else base_url
             self.endpoint += "/public/v2"
             self.max_retry = max_retry
             self.flush_interval = flush_interval
@@ -468,7 +471,7 @@ class Worker:
         self,
         name: str,
         description: Optional[str] = None,
-    ) -> None:
+    ) -> WvDataset:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
@@ -479,14 +482,16 @@ class Worker:
                 "description": description,
             },
         )
-        if response.status_code != 200:
+        if response.status_code == 201:
+            return WvDataset(**response.json())
+        else:
             raise Exception(f"Failed to create dataset: {response.text}")
 
     async def acreate_dataset(
         self,
         name: str,
         description: Optional[str] = None,
-    ) -> None:
+    ) -> Awaitable[WvDataset]:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
@@ -497,13 +502,13 @@ class Worker:
                 "description": description,
             },
         )
-        if response.status_code != 200:
-            raise Exception(f"Failed to create dataset: {response.text}")
+        if response:
+            return WvDataset(**response.json())
 
     def create_dataset_items(
         self,
         dataset_name: str,
-        items: List[DatasetItem],
+        items: List[WvDatasetItem],
     ) -> None:
         response = self.api_client.execute(
             self.api_key,
@@ -521,9 +526,9 @@ class Worker:
     async def acreate_dataset_items(
         self,
         dataset_name: str,
-        items: List[DatasetItem],
+        items: List[WvDatasetItem],
     ) -> None:
-        response = await self.async_api_client.execute(
+        await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
             "/dataset_items/batch",
@@ -533,13 +538,11 @@ class Worker:
                 "items": items,
             },
         )
-        if response.status_code != 200:
-            raise Exception(f"Failed to create dataset items: {response.text}")
 
     def fetch_dataset(
         self,
         name: str,
-    ) -> Dataset:
+    ) -> WvDataset:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
@@ -548,14 +551,14 @@ class Worker:
         )
 
         if response.status_code == 200:
-            return Dataset(**response.json())
+            return WvDataset(**response.json())
         else:
             raise Exception(f"Failed to get dataset: {response.text}")
 
     async def afetch_dataset(
         self,
         name: str,
-    ) -> Dataset:
+    ) -> WvDataset:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
@@ -563,10 +566,8 @@ class Worker:
             method="GET",
         )
 
-        if response.status_code == 200:
-            return Dataset(**response.json())
-        else:
-            raise Exception(f"Failed to get dataset: {response.text}")
+        if response:
+            return WvDataset(**response.json())
 
     def create_test(
         self,
@@ -593,7 +594,7 @@ class Worker:
         self,
         name: str,
         description: Optional[str] = None,
-    ) -> None:
+    ) -> WvPrompt:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
@@ -604,16 +605,17 @@ class Worker:
                 "description": description,
             },
         )
-        if response.status_code == 400:
-            raise Exception(f"Prompt {name} already exists")
-        if response.status_code != 200:
+
+        if response.status_code == 201:
+            return WvPrompt(**response.json())
+        else:
             raise Exception(f"Failed to create prompt: {response.text}")
 
     async def acreate_prompt(
         self,
         name: str,
         description: Optional[str] = None,
-    ) -> None:
+    ) -> Awaitable[WvPrompt]:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
@@ -624,13 +626,13 @@ class Worker:
                 "description": description,
             },
         )
-        if response.status_code != 200:
-            raise Exception(f"Failed to create prompt: {response.text}")
+        if response:
+            return WvPrompt(**response.json())
 
     def fetch_prompt(
         self,
         name: str,
-    ) -> Prompt:
+    ) -> WvPrompt:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
@@ -639,25 +641,22 @@ class Worker:
         )
 
         if response.status_code == 200:
-            return Prompt(**response.json())
+            return WvPrompt(**response.json())
         else:
             raise Exception(f"Failed to get prompt: {response.text}")
 
     async def afetch_prompt(
         self,
         name: str,
-    ) -> Prompt:
+    ) -> WvPrompt:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
             f"/prompts/{name}",
             method="GET",
         )
-
-        if response.status_code == 200:
-            return Prompt(**response.json())
-        else:
-            raise Exception(f"Failed to get prompt: {response.text}")
+        if response:
+            return WvPrompt(**response.json())
 
     def delete_prompt(self, name: str) -> None:
         response = self.api_client.execute(
@@ -676,10 +675,8 @@ class Worker:
             f"/prompts/{name}",
             method="DELETE",
         )
-        if response.status_code != 200:
-            raise Exception(f"Failed to delete prompt: {response.text}")
 
-    def list_prompts(self) -> List[Prompt]:
+    def list_prompts(self) -> List[WvPrompt]:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
@@ -688,11 +685,11 @@ class Worker:
         )
 
         if response.status_code == 200:
-            return [Prompt(**prompt) for prompt in response.json()]
+            return [WvPrompt(**prompt) for prompt in response.json()]
         else:
             raise Exception(f"Failed to list prompts: {response.text}")
 
-    async def alist_prompts(self) -> List[Prompt]:
+    async def alist_prompts(self) -> List[WvPrompt]:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
@@ -700,10 +697,8 @@ class Worker:
             method="GET",
         )
 
-        if response.status_code == 200:
-            return [Prompt(**prompt) for prompt in response.json()]
-        else:
-            raise Exception(f"Failed to list prompts: {response.text}")
+        if response:
+            return [WvPrompt(**prompt) for prompt in response.json()]
 
     # create, fetch, delete, list prompt versions
     def create_prompt_version(
@@ -726,13 +721,17 @@ class Worker:
                 "messages": messages,
                 "model": model,
                 "temperature": temperature,
-                "response_format": response_format,
+                "response_format": (
+                    type_to_response_format_param(response_format)
+                    if isinstance(response_format, BaseModel)
+                    else response_format
+                ),
                 "input_vars": input_vars,
                 "output_vars": output_vars,
                 "metadata": metadata,
             },
         )
-        if response.status_code != 200:
+        if not response.ok:
             raise Exception(f"Failed to create prompt version: {response.text}")
 
     async def acreate_prompt_version(
@@ -745,7 +744,7 @@ class Worker:
         input_vars: Optional[Dict[str, Any]] = None,
         output_vars: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> None:
+    ) -> WvPromptVersion:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
@@ -755,18 +754,22 @@ class Worker:
                 "messages": messages,
                 "model": model,
                 "temperature": temperature,
-                "response_format": response_format,
+                "response_format": (
+                    type_to_response_format_param(response_format)
+                    if isinstance(response_format, BaseModel)
+                    else response_format
+                ),
                 "input_vars": input_vars,
                 "output_vars": output_vars,
                 "metadata": metadata,
             },
         )
-        if response.status_code != 200:
-            raise Exception(f"Failed to create prompt version: {response.text}")
+
+        return WvPromptVersion(**response.json())
 
     def fetch_prompt_version(
         self, prompt_name: str, version: Union[str, int]
-    ) -> PromptVersion:
+    ) -> WvPromptVersion:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
@@ -774,23 +777,21 @@ class Worker:
             method="GET",
         )
         if response.status_code == 200:
-            return response.json()
+            return WvPromptVersion(**response.json())
         else:
             raise Exception(f"Failed to fetch prompt version: {response.text}")
 
     async def afetch_prompt_version(
         self, prompt_name: str, version: Union[str, int]
-    ) -> PromptVersion:
+    ) -> WvPromptVersion:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
             f"/prompts/{prompt_name}/versions/{version}",
             method="GET",
         )
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception(f"Failed to fetch prompt version: {response.text}")
+        if response:
+            return WvPromptVersion(**response.json())
 
     def delete_prompt_version(self, prompt_name: str, version: int) -> None:
         response = self.api_client.execute(
@@ -803,16 +804,14 @@ class Worker:
             raise Exception(f"Failed to delete prompt version: {response.text}")
 
     async def adelete_prompt_version(self, prompt_name: str, version: int) -> None:
-        response = await self.async_api_client.execute(
+        await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
             f"/prompts/{prompt_name}/versions/{version}",
             method="DELETE",
         )
-        if response.status_code != 200:
-            raise Exception(f"Failed to delete prompt version: {response.text}")
 
-    def list_prompt_versions(self, prompt_name: int) -> List[PromptVersion]:
+    def list_prompt_versions(self, prompt_name: int) -> List[WvPromptVersion]:
         response = self.api_client.execute(
             self.api_key,
             self.endpoint,
@@ -825,7 +824,7 @@ class Worker:
         else:
             raise Exception(f"Failed to list prompt versions: {response.text}")
 
-    async def alist_prompt_versions(self, prompt_name: str) -> List[PromptVersion]:
+    async def alist_prompt_versions(self, prompt_name: str) -> List[WvPromptVersion]:
         response = await self.async_api_client.execute(
             self.api_key,
             self.endpoint,
@@ -833,10 +832,8 @@ class Worker:
             method="GET",
         )
 
-        if response.status_code == 200:
+        if response:
             return response.json()
-        else:
-            raise Exception(f"Failed to list prompt versions: {response.text}")
 
     def send_requests(
         self,
@@ -858,7 +855,7 @@ class Worker:
         """
         # logger.info(requests)
         for attempt in range(self.max_retry):
-            logger.info(requests)
+            logger.debug(requests)
             try:
                 response = self.api_client.execute(
                     self.api_key,
