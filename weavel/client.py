@@ -961,16 +961,30 @@ class Weavel:
         trainset = self._get_trainset()
         if not evaluate:
             raise AttributeError("Evaluation not set")
-        start_idx, end_idx = data.get("start_idx", 0), data.get(
-            "end_idx", len(trainset)
-        )
-        testset_items = trainset[start_idx:end_idx]
-        logger.debug(f"Evaluating {len(testset_items)} items")
-        score, results = await evaluate(prompt=Prompt(**data["prompt"]), testset=testset_items)
-        return {
-            "score": score,
-            "results": [i.model_dump() for i in results],
-        }
+        return_only_score = data.get("return_only_score", True)
+        
+        logger.debug(f"Evaluating {len(trainset)} items")
+        logger.debug(f"Return Only Score : {return_only_score}")
+        if return_only_score:
+            score = await evaluate(
+                prompt=Prompt(**data["prompt"]),
+                testset=trainset,
+                return_only_score=True
+            )
+            return {
+                "score": score,
+            }
+        else:
+            preds, eval_results, global_result = await evaluate(
+                prompt=Prompt(**data["prompt"]),
+                testset=trainset,
+                return_only_score=False,
+            )
+            return {
+                "preds": preds,
+                "eval_results": [i.model_dump() for i in eval_results],
+                "global_result": global_result.model_dump(),
+            }
         
     @websocket_handler(WsLocalTask.METRIC.value)
     async def handle_metric_request(self, data: WsLocalMetricRequest):
@@ -1068,7 +1082,6 @@ class Weavel:
             metric=metric,
             global_metric=global_metric,
             testset=trainset,
-            return_outputs=True,
         )
 
         with self._ape_context(
