@@ -1,5 +1,6 @@
 from enum import StrEnum
-from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
+from typing_extensions import TypedDict
 from openai.types.chat.completion_create_params import ChatCompletionMessageParam
 from ape.common.types import DatasetItem
 
