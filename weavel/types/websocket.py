@@ -1,7 +1,7 @@
 from enum import StrEnum
-from typing import Any, Dict, Iterable, List, TypedDict, Union
+from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union
 from openai.types.chat.completion_create_params import ChatCompletionMessageParam
-
+from ape.common.types import DatasetItem
 
 class WsLocalTask(StrEnum):
     GENERATE = "GENERATE"
@@ -29,8 +29,8 @@ class WsLocalGenerateRequest(BaseWsLocalRequest):
 
 class WsLocalEvaluateRequest(BaseWsLocalRequest):
     prompt: Dict[str, Any]
-    start_idx: int
-    end_idx: int
+    start_idx: Optional[int] = None
+    end_idx: Optional[int] = None
 
 
 class WsLocalEvaluateResponse(TypedDict):
@@ -39,8 +39,5 @@ class WsLocalEvaluateResponse(TypedDict):
 
 
 class WsLocalMetricRequest(BaseWsLocalRequest):
+    dataset_item: DatasetItem
     pred: Union[str, Dict[str, Any]]
-    gold: Union[str, Dict[str, Any]]
-    inputs: Dict[str, Any]
-    trace: Dict[str, Any]
-    metadata: Dict[str, Any]

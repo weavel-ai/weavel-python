@@ -25,6 +25,7 @@ from ape.common import (
 from ape.common.types import ResponseFormat, DatasetItem
 from ape.common.types.response_format import OpenAIResponseFormat
 
+from weavel._constants import ENDPOINT_URL
 from weavel._worker import Worker
 from weavel.clients.websocket_client import WebsocketClient, websocket_handler
 from weavel.object_clients import (
@@ -65,7 +66,7 @@ class Weavel:
         flush_batch_size: Optional[int] = 20,
     ):
         self.api_key = api_key or os.getenv("WEAVEL_API_KEY")
-        self.base_url = base_url or os.getenv("WEAVEL_BASE_URL")
+        self.base_url = base_url or ENDPOINT_URL
         assert self.api_key is not None, "API key not provided."
         self._worker = Worker(
             self.api_key,
@@ -977,7 +978,7 @@ class Weavel:
         metric = self._get_metric()
         if not metric:
             raise AttributeError("Metric not set")
-        res = await metric(inputs=data["inputs"], gold=data["gold"], pred=data["pred"], trace=data["trace"], metadata=data["metadata"])
+        res = await metric(dataset_item=data["dataset_item"], pred=data["pred"])
         return res.model_dump()
 
     @websocket_handler(WsServerTask.OPTIMIZE.value)
@@ -1018,8 +1019,9 @@ class Weavel:
         # Set or create base prompt
         if isinstance(base_prompt, Prompt):
             if base_prompt.name:
-                wv_prompt = await self.afetch_prompt(name=base_prompt.name)
-                if not wv_prompt:
+                try:
+                    wv_prompt = await self.afetch_prompt(name=base_prompt.name)
+                except Exception:
                     wv_prompt = await self.acreate_prompt(name=base_prompt.name or str(uuid4()))
 
                 base_prompt = await self.acreate_prompt_version(
@@ -1059,8 +1061,8 @@ class Weavel:
 
 
         trainset = [
-                d.model_dump(include={"inputs", "outputs"}) for d in dataset_items
-            ]
+            DatasetItem(inputs=d.inputs, outputs=d.outputs) for d in dataset_items
+        ]
         
         evaluate = Evaluate(
             metric=metric,
@@ -1088,5 +1090,5 @@ class Weavel:
                 )
 
                 logger.info("Optimization complete!")
-                logger.info(f"View all prompts at: {res["url"]}")
+                logger.info(f"View all prompts at: {res['url']}")
                 return Prompt(**res["optimized_prompt"])
