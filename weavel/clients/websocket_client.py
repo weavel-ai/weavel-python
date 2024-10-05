@@ -305,22 +305,25 @@ class WebsocketClient:
             remaining = end_time - time.time()
             if remaining <= 0:
                 logger.error(
-                    textwrap.dedent(
-                        f"""
-                    Timeout waiting for response.
-                    Correlation ID: {correlation_id}
-                    Event: {str(event)}
-                    """
-                    ).strip()
+                    f"Timeout waiting for response. Correlation ID: {correlation_id}"
                 )
                 await self._unregister_request(correlation_id)
                 raise asyncio.TimeoutError
 
             try:
+                # Check if the WebSocket is closed
+                if self.ws.closed:
+                    logger.error("WebSocket connection is closed")
+                    await self._unregister_request(correlation_id)
+                    raise ConnectionError("WebSocket connection is closed")
+
                 # Create tasks
                 wait_tasks = [
                     asyncio.create_task(event.wait()),
                     asyncio.create_task(timeout_event.wait()),
+                    asyncio.create_task(
+                        self.ws.wait_closed()
+                    ),  # New task to detect WebSocket closure
                 ]
 
                 done, pending = await asyncio.wait(
@@ -344,14 +347,23 @@ class WebsocketClient:
                     timeout_event.clear()
                     logger.debug(f"Timeout reset for correlation_id: {correlation_id}")
 
+                if wait_tasks[2] in done:
+                    logger.error(
+                        "WebSocket connection closed while waiting for response"
+                    )
+                    await self._unregister_request(correlation_id)
+                    raise ConnectionError(
+                        "WebSocket connection closed while waiting for response"
+                    )
+
             except Exception:
                 logger.exception("Error waiting for response")
                 await self._unregister_request(correlation_id)
                 raise
 
     async def request(self, type: WsServerTask, data: Dict[str, Any] = {}):
-        if not self.ws:
-            raise ValueError("No active connection found")
+        if not self.ws or self.ws.closed:
+            await self.connect_to_gateway()
 
         correlation_id = await self._generate_correlation_id()
         await self._register_request(correlation_id)
@@ -371,8 +383,13 @@ class WebsocketClient:
         except asyncio.TimeoutError:
             logger.error(f"Timeout waiting for response. Message: {message}")
             raise
-        except Exception:
+        except ConnectionError as e:
+            logger.error(f"WebSocket connection error: {str(e)}")
+            await self.close_connection()
+            raise
+        except Exception as e:
             logger.exception(f"Error for request to server. Message: {message}")
+            await self.close_connection()
             raise
         finally:
             await self._unregister_request(correlation_id)

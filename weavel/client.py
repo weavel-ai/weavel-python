@@ -8,7 +8,7 @@ from itertools import islice
 import os
 from datetime import datetime, timezone
 import time
-from typing import  Callable, Dict, List, Optional, Any, Union
+from typing import Callable, Dict, List, Literal, Optional, Any, Union
 from uuid import uuid4
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -16,15 +16,22 @@ from openai.lib._parsing._completions import type_to_response_format_param
 
 from ape.common import (
     Prompt,
-    BaseGenerate,
-    Generate,
+    BaseGenerator,
+    Generator,
     BaseMetric,
     BaseGlobalMetric,
-    Evaluate,
+    Evaluator,
 )
-from ape.common.types import ResponseFormat, DatasetItem
+from ape.common.types import (
+    ResponseFormat,
+    DatasetItem,
+    MetricResult,
+    GlobalMetricResult,
+)
 from ape.common.types.response_format import OpenAIResponseFormat
+from ape.common.global_metric import AverageGlobalMetric
 
+from weavel._constants import ENDPOINT_URL
 from weavel._worker import Worker
 from weavel.clients.websocket_client import WebsocketClient, websocket_handler
 from weavel.object_clients import (
@@ -35,7 +42,16 @@ from weavel.object_clients import (
 )
 from weavel.utils import logger
 from weavel.types import WvDataset, WvDatasetItem, WvPrompt, WvPromptVersion
-from weavel.types.websocket import WsLocalEvaluateRequest, WsLocalEvaluateResponse, WsLocalGenerateRequest, WsLocalMetricRequest, WsLocalTask, WsServerOptimizeResponse, WsServerTask
+from weavel.types.websocket import (
+    WsLocalEvaluateRequest,
+    WsLocalEvaluateResponse,
+    WsLocalGenerateRequest,
+    WsLocalGlobalMetricRequest,
+    WsLocalMetricRequest,
+    WsLocalTask,
+    WsServerOptimizeResponse,
+    WsServerTask,
+)
 
 load_dotenv()
 
@@ -65,7 +81,7 @@ class Weavel:
         flush_batch_size: Optional[int] = 20,
     ):
         self.api_key = api_key or os.getenv("WEAVEL_API_KEY")
-        self.base_url = base_url or os.getenv("WEAVEL_BASE_URL")
+        self.base_url = base_url or ENDPOINT_URL
         assert self.api_key is not None, "API key not provided."
         self._worker = Worker(
             self.api_key,
@@ -75,17 +91,20 @@ class Weavel:
             flush_batch_size=flush_batch_size,
         )
         self.ws_client = WebsocketClient(api_key=api_key, base_url=base_url)
-        self._generate_var: contextvars.ContextVar[Optional[BaseGenerate]] = (
-            contextvars.ContextVar("generate")
+        self._generator_var: contextvars.ContextVar[Optional[BaseGenerator]] = (
+            contextvars.ContextVar("generator")
         )
-        self._evaluate_var: contextvars.ContextVar[Optional[Evaluate]] = (
-            contextvars.ContextVar("evaluate")
+        self._evaluator_var: contextvars.ContextVar[Optional[Evaluator]] = (
+            contextvars.ContextVar("evaluator")
         )
         self._trainset_var: contextvars.ContextVar[Optional[List[DatasetItem]]] = (
             contextvars.ContextVar("trainset")
         )
         self._metric_var: contextvars.ContextVar[Optional[BaseMetric]] = (
             contextvars.ContextVar("metric")
+        )
+        self._global_metric_var: contextvars.ContextVar[Optional[BaseGlobalMetric]] = (
+            contextvars.ContextVar("global_metric")
         )
         self.ws_client.register_handlers(self)
 
@@ -411,8 +430,6 @@ class Weavel:
             name (str): The name of the dataset.
             description (str): The description of the dataset.
         """
-        if self.testing:
-            return
 
         self._worker.create_dataset(
             name=name,
@@ -430,8 +447,6 @@ class Weavel:
             name (str): The name of the dataset.
             description (str): The description of the dataset.
         """
-        if self.testing:
-            return
 
         return await self._worker.acreate_dataset(
             name=name,
@@ -448,8 +463,6 @@ class Weavel:
         Returns:
             Dataset: The retrieved dataset.
         """
-        if self.testing:
-            return {}
 
         return self._worker.fetch_dataset(name)
 
@@ -463,10 +476,26 @@ class Weavel:
         Returns:
             Dataset: The retrieved dataset.
         """
-        if self.testing:
-            return {}
 
         return await self._worker.afetch_dataset(name)
+
+    def delete_dataset(self, name: str) -> None:
+        """Delete a dataset with the given name.
+
+        Args:
+            name (str): The name of the dataset to delete.
+        """
+
+        self._worker.delete_dataset(name)
+
+    async def adelete_dataset(self, name: str) -> None:
+        """Delete a dataset with the given name.
+
+        Args:
+            name (str): The name of the dataset to delete.
+        """
+
+        await self._worker.adelete_dataset(name)
 
     # create, fetch, delete, and list prompts
     def create_prompt(
@@ -480,8 +509,6 @@ class Weavel:
             name (str): The name of the prompt.
             description (str): The description of the prompt.
         """
-        if self.testing:
-            return
 
         return self._worker.create_prompt(
             name=name,
@@ -499,8 +526,6 @@ class Weavel:
             name (str): The name of the prompt.
             description (str): The description of the prompt.
         """
-        if self.testing:
-            return
 
         return await self._worker.acreate_prompt(
             name=name,
@@ -517,8 +542,6 @@ class Weavel:
         Returns:
             Prompt: The retrieved prompt.
         """
-        if self.testing:
-            return {}
 
         return self._worker.fetch_prompt(name)
 
@@ -532,8 +555,6 @@ class Weavel:
         Returns:
             Prompt: The retrieved prompt.
         """
-        if self.testing:
-            return {}
 
         return await self._worker.afetch_prompt(name)
 
@@ -543,8 +564,6 @@ class Weavel:
         Args:
             name (str): The name of the prompt to delete.
         """
-        if self.testing:
-            return
 
         self._worker.delete_prompt(name=name)
 
@@ -554,8 +573,6 @@ class Weavel:
         Args:
             name (str): The name of the prompt to delete.
         """
-        if self.testing:
-            return
 
         await self._worker.adelete_prompt(name=name)
 
@@ -565,8 +582,6 @@ class Weavel:
         Returns:
             List[Prompt]: A list of all prompts.
         """
-        if self.testing:
-            return []
 
         return self._worker.list_prompts()
 
@@ -576,8 +591,6 @@ class Weavel:
         Returns:
             List[Prompt]: A list of all prompts.
         """
-        if self.testing:
-            return []
 
         return await self._worker.alist_prompts()
 
@@ -605,9 +618,6 @@ class Weavel:
             output_vars (Optional[Dict[str, Any]]): The output variables for the prompt.
             metadata (Optional[Dict[str, Any]]): Additional metadata for the prompt version.
         """
-        if self.testing:
-            return
-
         self._worker.create_prompt_version(
             prompt_name=prompt_name,
             messages=messages,
@@ -642,9 +652,6 @@ class Weavel:
             output_vars (Optional[Dict[str, Any]]): The output variables for the prompt.
             metadata (Optional[Dict[str, Any]]): Additional metadata for the prompt version.
         """
-        if self.testing:
-            return
-
         return await self._worker.acreate_prompt_version(
             prompt_name=prompt_name,
             messages=messages,
@@ -668,9 +675,6 @@ class Weavel:
         Returns:
             PromptVersion: The prompt version details.
         """
-        if self.testing:
-            return WvPromptVersion()
-
         return self._worker.fetch_prompt_version(
             prompt_name=prompt_name, version=version
         )
@@ -688,8 +692,6 @@ class Weavel:
         Returns:
             PromptVersion: The prompt version details.
         """
-        if self.testing:
-            return WvPromptVersion()
 
         return await self._worker.afetch_prompt_version(
             prompt_name=prompt_name, version=version
@@ -704,9 +706,6 @@ class Weavel:
         Returns:
             List[PromptVersion]: A list of version identifiers.
         """
-        if self.testing:
-            return []
-
         return self._worker.list_prompt_versions(prompt_name=prompt_name)
 
     async def alist_prompt_versions(self, prompt_name: str) -> List[WvPromptVersion]:
@@ -718,8 +717,6 @@ class Weavel:
         Returns:
             List[PromptVersion]: A list of version identifiers.
         """
-        if self.testing:
-            return []
 
         return await self._worker.alist_prompt_versions(prompt_name=prompt_name)
 
@@ -730,8 +727,6 @@ class Weavel:
             prompt_name (str): The name of the prompt.
             version (str): The version identifier to delete.
         """
-        if self.testing:
-            return
 
         self._worker.delete_prompt_version(prompt_name=prompt_name, version=version)
 
@@ -742,8 +737,6 @@ class Weavel:
             prompt_name (str): The name of the prompt.
             version (str): The version identifier to delete.
         """
-        if self.testing:
-            return
 
         await self._worker.adelete_prompt_version(
             prompt_name=prompt_name, version=version
@@ -760,8 +753,6 @@ class Weavel:
             dataset_name (str): The name of the dataset.
             items (Union[List[Dict[str, Any]], List[DatasetItem]]): The dataset items to upload.
         """
-        if self.testing:
-            return
 
         for item in items:
             if isinstance(item, WvDatasetItem):
@@ -780,12 +771,11 @@ class Weavel:
             dataset_name (str): The name of the dataset.
             items (Union[List[Dict[str, Any]], List[DatasetItem]]): The dataset items to upload.
         """
-        if self.testing:
-            return
 
-        await self._worker.acreate_dataset_items(dataset_name, [
-            item.model_dump() for item in items if isinstance(item, WvDatasetItem)
-        ])
+        await self._worker.acreate_dataset_items(
+            dataset_name,
+            [item.model_dump() for item in items if isinstance(item, WvDatasetItem)],
+        )
 
     def test(
         self,
@@ -917,27 +907,32 @@ class Weavel:
 
     @contextmanager
     def _ape_context(
-        self, generate: Optional[BaseGenerate], evaluate: Optional[Evaluate],
+        self,
+        generator: Optional[BaseGenerator],
+        evaluator: Optional[Evaluator],
         metric: Optional[BaseMetric],
-        trainset: Optional[List[DatasetItem]]
+        trainset: Optional[List[DatasetItem]],
+        global_metric: Optional[BaseGlobalMetric] = AverageGlobalMetric(),
     ):
-        token_generate = self._generate_var.set(generate)
-        token_evaluate = self._evaluate_var.set(evaluate)
+        token_generator = self._generator_var.set(generator)
+        token_evaluator = self._evaluator_var.set(evaluator)
         token_trainset = self._trainset_var.set(trainset)
         token_metric = self._metric_var.set(metric)
+        token_global_metric = self._global_metric_var.set(global_metric)
         try:
             yield
         finally:
-            self._generate_var.reset(token_generate)
-            self._evaluate_var.reset(token_evaluate)
+            self._generator_var.reset(token_generator)
+            self._evaluator_var.reset(token_evaluator)
             self._trainset_var.reset(token_trainset)
             self._metric_var.reset(token_metric)
+            self._global_metric_var.reset(token_global_metric)
 
-    def _get_generate(self) -> Optional[BaseGenerate]:
-        return self._generate_var.get()
+    def _get_generator(self) -> Optional[BaseGenerator]:
+        return self._generator_var.get()
 
-    def _get_evaluate(self) -> Optional[Evaluate]:
-        return self._evaluate_var.get()
+    def _get_evaluator(self) -> Optional[Evaluator]:
+        return self._evaluator_var.get()
 
     def _get_trainset(self) -> Optional[List[DatasetItem]]:
         return self._trainset_var.get()
@@ -945,39 +940,71 @@ class Weavel:
     def _get_metric(self) -> Optional[BaseMetric]:
         return self._metric_var.get()
 
+    def _get_global_metric(self) -> Optional[BaseGlobalMetric]:
+        return self._global_metric_var.get()
+
+    def _set_global_metric(self, global_metric: Optional[BaseGlobalMetric]):
+        self._global_metric_var.set(global_metric)
+
     @websocket_handler(WsLocalTask.GENERATE.value)
     async def handle_generation_request(self, data: WsLocalGenerateRequest):
         logger.debug("Handling generation request...")
-        generate = self._get_generate()
-        if not generate:
+        generator = self._get_generator()
+        if not generator:
             raise AttributeError("Generate not set")
-        return await generate(prompt=Prompt(**data["prompt"]), inputs=data["inputs"])
+        return await generator(prompt=Prompt(**data["prompt"]), inputs=data["inputs"])
 
     @websocket_handler(WsLocalTask.EVALUATE.value)
-    async def handle_evaluation_request(self, data: WsLocalEvaluateRequest) -> WsLocalEvaluateResponse:
+    async def handle_evaluation_request(
+        self, data: WsLocalEvaluateRequest
+    ) -> WsLocalEvaluateResponse:
         logger.debug("Handling evaluation request...")
-        evaluate = self._get_evaluate()
+        evaluator = self._get_evaluator()
         trainset = self._get_trainset()
-        if not evaluate:
+        if not evaluator:
             raise AttributeError("Evaluation not set")
-        start_idx, end_idx = data.get("start_idx", 0), data.get(
-            "end_idx", len(trainset)
-        )
-        testset_items = trainset[start_idx:end_idx]
-        logger.debug(f"Evaluating {len(testset_items)} items")
-        score, results = await evaluate(prompt=Prompt(**data["prompt"]), testset=testset_items)
-        return {
-            "score": score,
-            "results": [i.model_dump() for i in results],
-        }
-        
+        return_only_score = data.get("return_only_score", True)
+
+        logger.debug(f"Evaluating {len(trainset)} items")
+        logger.debug(f"Return Only Score : {return_only_score}")
+        if return_only_score:
+            score = await evaluator(
+                prompt=Prompt(**data["prompt"]),
+                testset=trainset,
+                return_only_score=True,
+            )
+            return {
+                "score": score,
+            }
+        else:
+            preds, eval_results, global_result = await evaluator(
+                prompt=Prompt(**data["prompt"]),
+                testset=trainset,
+                return_only_score=False,
+            )
+            return {
+                "preds": preds,
+                "eval_results": [i.model_dump() for i in eval_results],
+                "global_result": global_result.model_dump(),
+            }
+
     @websocket_handler(WsLocalTask.METRIC.value)
     async def handle_metric_request(self, data: WsLocalMetricRequest):
         logger.debug("Handling metric request...")
         metric = self._get_metric()
         if not metric:
             raise AttributeError("Metric not set")
-        res = await metric(inputs=data["inputs"], gold=data["gold"], pred=data["pred"], trace=data["trace"], metadata=data["metadata"])
+        res = await metric(dataset_item=data["dataset_item"], pred=data["pred"])
+        return res.model_dump()
+
+    @websocket_handler(WsLocalTask.GLOBAL_METRIC.value)
+    async def handle_global_metric_request(self, data: WsLocalGlobalMetricRequest):
+        logger.debug("Handling global metric request...")
+        global_metric = self._get_global_metric()
+        if not global_metric:
+            raise AttributeError("Global Metric not set")
+        results = [MetricResult(**r) for r in data["results"]]
+        res = await global_metric(results=results)
         return res.model_dump()
 
     @websocket_handler(WsServerTask.OPTIMIZE.value)
@@ -1001,7 +1028,9 @@ class Weavel:
         if event:
             event.set()
         else:
-            logger.error(f"No pending request found for correlation_id: {correlation_id}")
+            logger.error(
+                f"No pending request found for correlation_id: {correlation_id}"
+            )
 
     # Optimization
     async def optimize(
@@ -1010,41 +1039,67 @@ class Weavel:
         models: List[str],
         metric: BaseMetric,
         trainset: List[DatasetItem] | WvDataset,
-        generate: Optional[BaseGenerate] = Generate(),
+        generator: Optional[BaseGenerator] = Generator(),
         global_metric: Optional[BaseGlobalMetric] = None,
-        max_steps: int = 20,
-        goal_score: int = 100,
+        algorithm: Literal[
+            "dspy_mipro", "few_shot", "text_gradient", "optuna", "expel"
+        ] = "dspy_mipro",
+        # DspyMiproTrainer & OptunaTrainer & FewShotTrainer params
+        num_candidates: Optional[int] = 10,
+        # DspyMiproTrainer & FewShotTrainer params
+        max_bootstrapped_demos: Optional[int] = 5,
+        max_labeled_demos: Optional[int] = 5,
+        success_score: Optional[float] = 1.0,
+        # DspyMiproTrainer & OptunaTrainer params
+        minibatch_size: Optional[int] = 25,
+        max_steps: Optional[int] = 20,
+        # TextGradientTrainer params
+        batch_size: Optional[int] = 4,
+        early_stopping_rounds: Optional[int] = 10,
+        validation_type: Optional[Literal["trainset", "valset", "all"]] = "trainset",
+        # TextGradientTrainer & ExpelTrainer params
+        max_proposals_per_step: Optional[int] = 5,
+        # ExpelTrainer params
+        target_subgroup: Literal["success", "failure", "all"] = "all",
     ) -> Prompt:
         # Set or create base prompt
         if isinstance(base_prompt, Prompt):
+            wv_prompt = None
             if base_prompt.name:
-                wv_prompt = await self.afetch_prompt(name=base_prompt.name)
-                if not wv_prompt:
-                    wv_prompt = await self.acreate_prompt(name=base_prompt.name or str(uuid4()))
-
-                base_prompt = await self.acreate_prompt_version(
-                    prompt_name=wv_prompt.name,
-                    messages=base_prompt.messages,
-                    model=base_prompt.model,
-                    temperature=base_prompt.temperature,
-                    response_format=(
-                        type_to_response_format_param(base_prompt.response_format)
-                        if isinstance(base_prompt.response_format, BaseModel)
-                        else base_prompt.response_format
-                    ),
-                    input_vars=base_prompt.inputs_desc,
-                    output_vars=base_prompt.outputs_desc,
-                    metadata=base_prompt.metadata,
+                try:
+                    wv_prompt = await self.afetch_prompt(name=base_prompt.name)
+                except Exception:
+                    pass
+            if not wv_prompt:
+                wv_prompt = await self.acreate_prompt(
+                    name=base_prompt.name or str(uuid4())
                 )
+            wv_prompt_version = await self.acreate_prompt_version(
+                prompt_name=wv_prompt.name,
+                messages=base_prompt.messages,
+                model=base_prompt.model,
+                temperature=base_prompt.temperature,
+                response_format=(
+                    type_to_response_format_param(base_prompt.response_format)
+                    if isinstance(base_prompt.response_format, BaseModel)
+                    else base_prompt.response_format
+                ),
+                input_vars=base_prompt.inputs_desc,
+                output_vars=base_prompt.outputs_desc,
+                metadata=base_prompt.metadata,
+            )
+        elif isinstance(base_prompt, WvPromptVersion):
+            wv_prompt_version = base_prompt
+        else:
+            raise ValueError(
+                "base_prompt must be either a Prompt or WvPromptVersion object"
+            )
 
+        dataset_created = False
         if not isinstance(trainset, WvDataset):
-            dataset_name = f"trainset-prompt-{wv_prompt.name or wv_prompt.uuid}"
-            try:
-                dataset = await self.aget_dataset(name=dataset_name)
-            except Exception:
-                dataset = await self.acreate_dataset(
-                    name=dataset_name
-                )
+            dataset_name = f"trainset-{uuid4()}"
+            dataset = await self.acreate_dataset(name=dataset_name)
+            dataset_created = True
             dataset_items = [
                 WvDatasetItem(inputs=item["inputs"], outputs=item["outputs"])
                 for item in trainset
@@ -1057,36 +1112,50 @@ class Weavel:
                 dataset = trainset
             dataset_items = trainset.items
 
-
         trainset = [
-                d.model_dump(include={"inputs", "outputs"}) for d in dataset_items
-            ]
-        
-        evaluate = Evaluate(
+            DatasetItem(inputs=d.inputs, outputs=d.outputs) for d in dataset_items
+        ]
+
+        evaluator = Evaluator(
             metric=metric,
             global_metric=global_metric,
             testset=trainset,
-            return_outputs=True,
         )
 
-        with self._ape_context(
-            generate=generate,
-            evaluate=evaluate,
-            metric=metric,
-            trainset=trainset,
-        ):
-            async with self.ws_client:
-                res = await self.ws_client.request(
-                    type=WsServerTask.OPTIMIZE,
-                    data={
-                        "base_prompt_version_uuid": base_prompt.uuid,
-                        "models": models,
-                        "trainset_uuid": dataset.uuid,
-                        "max_steps": max_steps,
-                        "goal_score": goal_score,
-                    },
-                )
+        try:
+            with self._ape_context(
+                generator=generator,
+                evaluator=evaluator,
+                metric=metric,
+                trainset=trainset,
+            ):
+                async with self.ws_client:
+                    res = await self.ws_client.request(
+                        type=WsServerTask.OPTIMIZE,
+                        data={
+                            "base_prompt_version_uuid": wv_prompt_version.uuid,
+                            "models": models,
+                            "trainset_uuid": dataset.uuid,
+                            "algorithm": algorithm,
+                            "num_candidates": num_candidates,
+                            "max_bootstrapped_demos": max_bootstrapped_demos,
+                            "max_labeled_demos": max_labeled_demos,
+                            "success_score": success_score,
+                            "minibatch_size": minibatch_size,
+                            "max_steps": max_steps,
+                            "batch_size": batch_size,
+                            "early_stopping_rounds": early_stopping_rounds,
+                            "validation_type": validation_type,
+                            "max_proposals_per_step": max_proposals_per_step,
+                            "target_subgroup": target_subgroup,
+                        },
+                    )
 
-                logger.info("Optimization complete!")
-                logger.info(f"View all prompts at: {res["url"]}")
-                return Prompt(**res["optimized_prompt"])
+                    logger.info("Optimization complete!")
+                    logger.info(f"View all prompts at: {res['url']}")
+                    return Prompt(**res["optimized_prompt"])
+        except Exception as exc:
+            raise exc
+        finally:
+            if dataset_created:
+                await self.adelete_dataset(dataset.name)

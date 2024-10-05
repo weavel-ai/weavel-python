@@ -1,12 +1,13 @@
 from enum import StrEnum
-from typing import Any, Dict, Iterable, List, TypedDict, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
+from typing_extensions import TypedDict
 from openai.types.chat.completion_create_params import ChatCompletionMessageParam
-
-
+from ape.common.types import DatasetItem, MetricResult, GlobalMetricResult
 class WsLocalTask(StrEnum):
     GENERATE = "GENERATE"
     EVALUATE = "EVALUATE"
     METRIC = "METRIC"
+    GLOBAL_METRIC = "GLOBAL_METRIC"
 
 
 class WsServerTask(StrEnum):
@@ -29,18 +30,20 @@ class WsLocalGenerateRequest(BaseWsLocalRequest):
 
 class WsLocalEvaluateRequest(BaseWsLocalRequest):
     prompt: Dict[str, Any]
-    start_idx: int
-    end_idx: int
 
 
 class WsLocalEvaluateResponse(TypedDict):
-    score: float
-    results: List[Dict[str, Any]]
+    score: Optional[float]
+    preds: Optional[List[Union[str, Dict[str, Any]]]]
+    eval_results: Optional[List[MetricResult]]
+    global_result: Optional[GlobalMetricResult]
 
+class WsLocalGlobalMetricRequest(BaseWsLocalRequest):
+    results: List[MetricResult]
+    
+class WsLocalGlobalMetricResponse(TypedDict):
+    global_result: GlobalMetricResult
 
 class WsLocalMetricRequest(BaseWsLocalRequest):
+    dataset_item: DatasetItem
     pred: Union[str, Dict[str, Any]]
-    gold: Union[str, Dict[str, Any]]
-    inputs: Dict[str, Any]
-    trace: Dict[str, Any]
-    metadata: Dict[str, Any]

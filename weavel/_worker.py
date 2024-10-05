@@ -568,6 +568,26 @@ class Worker:
 
         if response:
             return WvDataset(**response.json())
+        
+    def delete_dataset(self, name: str) -> None:
+        response = self.api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/datasets/{name}",
+            method="DELETE",
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to delete dataset: {response.text}")
+    
+    async def adelete_dataset(self, name: str) -> None:
+        response = await self.async_api_client.execute(
+            self.api_key,
+            self.endpoint,
+            f"/datasets/{name}",
+            method="DELETE",
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to delete dataset: {response.text}")
 
     def create_test(
         self,
