@@ -110,7 +110,7 @@ DEFAULT_LOG_LEVEL = os.environ.get("WEAVEL_LOG_LEVEL", "WARNING").upper()
 # Set Defaults
 _logger = logging.getLogger(LOGGER_NAME)
 _logger.handlers = [RichHandler(console=console, rich_tracebacks=True, markup=True)]
-logger.setLevel(DEFAULT_LOG_LEVEL)
+_logger.setLevel(DEFAULT_LOG_LEVEL)
 
 settings = LogSettings(output_type="str", method="console", file_name=None)
 set_log_output = settings.set_log_output

@@ -430,8 +430,6 @@ class Weavel:
             name (str): The name of the dataset.
             description (str): The description of the dataset.
         """
-        if self.testing:
-            return
 
         self._worker.create_dataset(
             name=name,
@@ -449,8 +447,6 @@ class Weavel:
             name (str): The name of the dataset.
             description (str): The description of the dataset.
         """
-        if self.testing:
-            return
 
         return await self._worker.acreate_dataset(
             name=name,
@@ -467,8 +463,6 @@ class Weavel:
         Returns:
             Dataset: The retrieved dataset.
         """
-        if self.testing:
-            return {}
 
         return self._worker.fetch_dataset(name)
 
@@ -482,8 +476,6 @@ class Weavel:
         Returns:
             Dataset: The retrieved dataset.
         """
-        if self.testing:
-            return {}
 
         return await self._worker.afetch_dataset(name)
 
@@ -493,8 +485,6 @@ class Weavel:
         Args:
             name (str): The name of the dataset to delete.
         """
-        if self.testing:
-            return
 
         self._worker.delete_dataset(name)
 
@@ -504,8 +494,6 @@ class Weavel:
         Args:
             name (str): The name of the dataset to delete.
         """
-        if self.testing:
-            return
 
         await self._worker.adelete_dataset(name)
 
@@ -521,8 +509,6 @@ class Weavel:
             name (str): The name of the prompt.
             description (str): The description of the prompt.
         """
-        if self.testing:
-            return
 
         return self._worker.create_prompt(
             name=name,
@@ -540,8 +526,6 @@ class Weavel:
             name (str): The name of the prompt.
             description (str): The description of the prompt.
         """
-        if self.testing:
-            return
 
         return await self._worker.acreate_prompt(
             name=name,
@@ -558,8 +542,6 @@ class Weavel:
         Returns:
             Prompt: The retrieved prompt.
         """
-        if self.testing:
-            return {}
 
         return self._worker.fetch_prompt(name)
 
@@ -573,8 +555,6 @@ class Weavel:
         Returns:
             Prompt: The retrieved prompt.
         """
-        if self.testing:
-            return {}
 
         return await self._worker.afetch_prompt(name)
 
@@ -584,8 +564,6 @@ class Weavel:
         Args:
             name (str): The name of the prompt to delete.
         """
-        if self.testing:
-            return
 
         self._worker.delete_prompt(name=name)
 
@@ -595,8 +573,6 @@ class Weavel:
         Args:
             name (str): The name of the prompt to delete.
         """
-        if self.testing:
-            return
 
         await self._worker.adelete_prompt(name=name)
 
@@ -606,8 +582,6 @@ class Weavel:
         Returns:
             List[Prompt]: A list of all prompts.
         """
-        if self.testing:
-            return []
 
         return self._worker.list_prompts()
 
@@ -617,8 +591,6 @@ class Weavel:
         Returns:
             List[Prompt]: A list of all prompts.
         """
-        if self.testing:
-            return []
 
         return await self._worker.alist_prompts()
 
@@ -646,9 +618,6 @@ class Weavel:
             output_vars (Optional[Dict[str, Any]]): The output variables for the prompt.
             metadata (Optional[Dict[str, Any]]): Additional metadata for the prompt version.
         """
-        if self.testing:
-            return
-
         self._worker.create_prompt_version(
             prompt_name=prompt_name,
             messages=messages,
@@ -683,9 +652,6 @@ class Weavel:
             output_vars (Optional[Dict[str, Any]]): The output variables for the prompt.
             metadata (Optional[Dict[str, Any]]): Additional metadata for the prompt version.
         """
-        if self.testing:
-            return
-
         return await self._worker.acreate_prompt_version(
             prompt_name=prompt_name,
             messages=messages,
@@ -709,9 +675,6 @@ class Weavel:
         Returns:
             PromptVersion: The prompt version details.
         """
-        if self.testing:
-            return WvPromptVersion()
-
         return self._worker.fetch_prompt_version(
             prompt_name=prompt_name, version=version
         )
@@ -729,8 +692,6 @@ class Weavel:
         Returns:
             PromptVersion: The prompt version details.
         """
-        if self.testing:
-            return WvPromptVersion()
 
         return await self._worker.afetch_prompt_version(
             prompt_name=prompt_name, version=version
@@ -745,9 +706,6 @@ class Weavel:
         Returns:
             List[PromptVersion]: A list of version identifiers.
         """
-        if self.testing:
-            return []
-
         return self._worker.list_prompt_versions(prompt_name=prompt_name)
 
     async def alist_prompt_versions(self, prompt_name: str) -> List[WvPromptVersion]:
@@ -759,8 +717,6 @@ class Weavel:
         Returns:
             List[PromptVersion]: A list of version identifiers.
         """
-        if self.testing:
-            return []
 
         return await self._worker.alist_prompt_versions(prompt_name=prompt_name)
 
@@ -771,8 +727,6 @@ class Weavel:
             prompt_name (str): The name of the prompt.
             version (str): The version identifier to delete.
         """
-        if self.testing:
-            return
 
         self._worker.delete_prompt_version(prompt_name=prompt_name, version=version)
 
@@ -783,8 +737,6 @@ class Weavel:
             prompt_name (str): The name of the prompt.
             version (str): The version identifier to delete.
         """
-        if self.testing:
-            return
 
         await self._worker.adelete_prompt_version(
             prompt_name=prompt_name, version=version
@@ -801,8 +753,6 @@ class Weavel:
             dataset_name (str): The name of the dataset.
             items (Union[List[Dict[str, Any]], List[DatasetItem]]): The dataset items to upload.
         """
-        if self.testing:
-            return
 
         for item in items:
             if isinstance(item, WvDatasetItem):
@@ -821,8 +771,6 @@ class Weavel:
             dataset_name (str): The name of the dataset.
             items (Union[List[Dict[str, Any]], List[DatasetItem]]): The dataset items to upload.
         """
-        if self.testing:
-            return
 
         await self._worker.acreate_dataset_items(
             dataset_name,
@@ -1116,33 +1064,40 @@ class Weavel:
     ) -> Prompt:
         # Set or create base prompt
         if isinstance(base_prompt, Prompt):
+            wv_prompt = None
             if base_prompt.name:
                 try:
                     wv_prompt = await self.afetch_prompt(name=base_prompt.name)
                 except Exception:
-                    wv_prompt = await self.acreate_prompt(
-                        name=base_prompt.name or str(uuid4())
-                    )
-
-                base_prompt = await self.acreate_prompt_version(
-                    prompt_name=wv_prompt.name,
-                    messages=base_prompt.messages,
-                    model=base_prompt.model,
-                    temperature=base_prompt.temperature,
-                    response_format=(
-                        type_to_response_format_param(base_prompt.response_format)
-                        if isinstance(base_prompt.response_format, BaseModel)
-                        else base_prompt.response_format
-                    ),
-                    input_vars=base_prompt.inputs_desc,
-                    output_vars=base_prompt.outputs_desc,
-                    metadata=base_prompt.metadata,
+                    pass
+            if not wv_prompt:
+                wv_prompt = await self.acreate_prompt(
+                    name=base_prompt.name or str(uuid4())
                 )
+            wv_prompt_version = await self.acreate_prompt_version(
+                prompt_name=wv_prompt.name,
+                messages=base_prompt.messages,
+                model=base_prompt.model,
+                temperature=base_prompt.temperature,
+                response_format=(
+                    type_to_response_format_param(base_prompt.response_format)
+                    if isinstance(base_prompt.response_format, BaseModel)
+                    else base_prompt.response_format
+                ),
+                input_vars=base_prompt.inputs_desc,
+                output_vars=base_prompt.outputs_desc,
+                metadata=base_prompt.metadata,
+            )
+        elif isinstance(base_prompt, WvPromptVersion):
+            wv_prompt_version = base_prompt
+        else:
+            raise ValueError(
+                "base_prompt must be either a Prompt or WvPromptVersion object"
+            )
+
         dataset_created = False
         if not isinstance(trainset, WvDataset):
-            dataset_name = (
-                f"trainset-prompt-{wv_prompt.name or wv_prompt.uuid}-{uuid4()}"
-            )
+            dataset_name = f"trainset-{uuid4()}"
             dataset = await self.acreate_dataset(name=dataset_name)
             dataset_created = True
             dataset_items = [
@@ -1167,36 +1122,40 @@ class Weavel:
             testset=trainset,
         )
 
-        with self._ape_context(
-            generator=generator,
-            evaluator=evaluator,
-            metric=metric,
-            trainset=trainset,
-        ):
-            async with self.ws_client:
-                res = await self.ws_client.request(
-                    type=WsServerTask.OPTIMIZE,
-                    data={
-                        "base_prompt_version_uuid": base_prompt.uuid,
-                        "models": models,
-                        "trainset_uuid": dataset.uuid,
-                        "algorithm": algorithm,
-                        "num_candidates": num_candidates,
-                        "max_bootstrapped_demos": max_bootstrapped_demos,
-                        "max_labeled_demos": max_labeled_demos,
-                        "success_score": success_score,
-                        "minibatch_size": minibatch_size,
-                        "max_steps": max_steps,
-                        "batch_size": batch_size,
-                        "early_stopping_rounds": early_stopping_rounds,
-                        "validation_type": validation_type,
-                        "max_proposals_per_step": max_proposals_per_step,
-                        "target_subgroup": target_subgroup,
-                    },
-                )
+        try:
+            with self._ape_context(
+                generator=generator,
+                evaluator=evaluator,
+                metric=metric,
+                trainset=trainset,
+            ):
+                async with self.ws_client:
+                    res = await self.ws_client.request(
+                        type=WsServerTask.OPTIMIZE,
+                        data={
+                            "base_prompt_version_uuid": wv_prompt_version.uuid,
+                            "models": models,
+                            "trainset_uuid": dataset.uuid,
+                            "algorithm": algorithm,
+                            "num_candidates": num_candidates,
+                            "max_bootstrapped_demos": max_bootstrapped_demos,
+                            "max_labeled_demos": max_labeled_demos,
+                            "success_score": success_score,
+                            "minibatch_size": minibatch_size,
+                            "max_steps": max_steps,
+                            "batch_size": batch_size,
+                            "early_stopping_rounds": early_stopping_rounds,
+                            "validation_type": validation_type,
+                            "max_proposals_per_step": max_proposals_per_step,
+                            "target_subgroup": target_subgroup,
+                        },
+                    )
 
-                logger.info("Optimization complete!")
-                logger.info(f"View all prompts at: {res['url']}")
-                if dataset_created:
-                    await self.adelete_dataset(dataset.name)
-                return Prompt(**res["optimized_prompt"])
+                    logger.info("Optimization complete!")
+                    logger.info(f"View all prompts at: {res['url']}")
+                    return Prompt(**res["optimized_prompt"])
+        except Exception as exc:
+            raise exc
+        finally:
+            if dataset_created:
+                await self.adelete_dataset(dataset.name)
