@@ -8,7 +8,7 @@ from itertools import islice
 import os
 from datetime import datetime, timezone
 import time
-from typing import  Callable, Dict, List, Literal, Optional, Any, Union
+from typing import Callable, Dict, List, Literal, Optional, Any, Union
 from uuid import uuid4
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -22,7 +22,12 @@ from ape.common import (
     BaseGlobalMetric,
     Evaluator,
 )
-from ape.common.types import ResponseFormat, DatasetItem, MetricResult, GlobalMetricResult
+from ape.common.types import (
+    ResponseFormat,
+    DatasetItem,
+    MetricResult,
+    GlobalMetricResult,
+)
 from ape.common.types.response_format import OpenAIResponseFormat
 from ape.common.global_metric import AverageGlobalMetric
 
@@ -37,7 +42,16 @@ from weavel.object_clients import (
 )
 from weavel.utils import logger
 from weavel.types import WvDataset, WvDatasetItem, WvPrompt, WvPromptVersion
-from weavel.types.websocket import WsLocalEvaluateRequest, WsLocalEvaluateResponse, WsLocalGenerateRequest, WsLocalGlobalMetricRequest, WsLocalMetricRequest, WsLocalTask, WsServerOptimizeResponse, WsServerTask
+from weavel.types.websocket import (
+    WsLocalEvaluateRequest,
+    WsLocalEvaluateResponse,
+    WsLocalGenerateRequest,
+    WsLocalGlobalMetricRequest,
+    WsLocalMetricRequest,
+    WsLocalTask,
+    WsServerOptimizeResponse,
+    WsServerTask,
+)
 
 load_dotenv()
 
@@ -472,7 +486,7 @@ class Weavel:
             return {}
 
         return await self._worker.afetch_dataset(name)
-    
+
     def delete_dataset(self, name: str) -> None:
         """Delete a dataset with the given name.
 
@@ -483,7 +497,7 @@ class Weavel:
             return
 
         self._worker.delete_dataset(name)
-    
+
     async def adelete_dataset(self, name: str) -> None:
         """Delete a dataset with the given name.
 
@@ -810,9 +824,10 @@ class Weavel:
         if self.testing:
             return
 
-        await self._worker.acreate_dataset_items(dataset_name, [
-            item.model_dump() for item in items if isinstance(item, WvDatasetItem)
-        ])
+        await self._worker.acreate_dataset_items(
+            dataset_name,
+            [item.model_dump() for item in items if isinstance(item, WvDatasetItem)],
+        )
 
     def test(
         self,
@@ -944,12 +959,12 @@ class Weavel:
 
     @contextmanager
     def _ape_context(
-        self, 
-        generator: Optional[BaseGenerator], 
+        self,
+        generator: Optional[BaseGenerator],
         evaluator: Optional[Evaluator],
         metric: Optional[BaseMetric],
         trainset: Optional[List[DatasetItem]],
-        global_metric: Optional[BaseGlobalMetric] = AverageGlobalMetric()
+        global_metric: Optional[BaseGlobalMetric] = AverageGlobalMetric(),
     ):
         token_generator = self._generator_var.set(generator)
         token_evaluator = self._evaluator_var.set(evaluator)
@@ -964,7 +979,7 @@ class Weavel:
             self._trainset_var.reset(token_trainset)
             self._metric_var.reset(token_metric)
             self._global_metric_var.reset(token_global_metric)
-            
+
     def _get_generator(self) -> Optional[BaseGenerator]:
         return self._generator_var.get()
 
@@ -976,7 +991,7 @@ class Weavel:
 
     def _get_metric(self) -> Optional[BaseMetric]:
         return self._metric_var.get()
-    
+
     def _get_global_metric(self) -> Optional[BaseGlobalMetric]:
         return self._global_metric_var.get()
 
@@ -992,21 +1007,23 @@ class Weavel:
         return await generator(prompt=Prompt(**data["prompt"]), inputs=data["inputs"])
 
     @websocket_handler(WsLocalTask.EVALUATE.value)
-    async def handle_evaluation_request(self, data: WsLocalEvaluateRequest) -> WsLocalEvaluateResponse:
+    async def handle_evaluation_request(
+        self, data: WsLocalEvaluateRequest
+    ) -> WsLocalEvaluateResponse:
         logger.debug("Handling evaluation request...")
         evaluator = self._get_evaluator()
         trainset = self._get_trainset()
         if not evaluator:
             raise AttributeError("Evaluation not set")
         return_only_score = data.get("return_only_score", True)
-        
+
         logger.debug(f"Evaluating {len(trainset)} items")
         logger.debug(f"Return Only Score : {return_only_score}")
         if return_only_score:
             score = await evaluator(
                 prompt=Prompt(**data["prompt"]),
                 testset=trainset,
-                return_only_score=True
+                return_only_score=True,
             )
             return {
                 "score": score,
@@ -1022,7 +1039,7 @@ class Weavel:
                 "eval_results": [i.model_dump() for i in eval_results],
                 "global_result": global_result.model_dump(),
             }
-        
+
     @websocket_handler(WsLocalTask.METRIC.value)
     async def handle_metric_request(self, data: WsLocalMetricRequest):
         logger.debug("Handling metric request...")
@@ -1031,7 +1048,7 @@ class Weavel:
             raise AttributeError("Metric not set")
         res = await metric(dataset_item=data["dataset_item"], pred=data["pred"])
         return res.model_dump()
-    
+
     @websocket_handler(WsLocalTask.GLOBAL_METRIC.value)
     async def handle_global_metric_request(self, data: WsLocalGlobalMetricRequest):
         logger.debug("Handling global metric request...")
@@ -1063,7 +1080,9 @@ class Weavel:
         if event:
             event.set()
         else:
-            logger.error(f"No pending request found for correlation_id: {correlation_id}")
+            logger.error(
+                f"No pending request found for correlation_id: {correlation_id}"
+            )
 
     # Optimization
     async def optimize(
@@ -1074,7 +1093,9 @@ class Weavel:
         trainset: List[DatasetItem] | WvDataset,
         generator: Optional[BaseGenerator] = Generator(),
         global_metric: Optional[BaseGlobalMetric] = None,
-        method: Literal["dspy_mipro", "few_shot", "text_gradient", "optuna", "expel"] = "dspy_mipro",
+        algorithm: Literal[
+            "dspy_mipro", "few_shot", "text_gradient", "optuna", "expel"
+        ] = "dspy_mipro",
         # DspyMiproTrainer & OptunaTrainer & FewShotTrainer params
         num_candidates: Optional[int] = 10,
         # DspyMiproTrainer & FewShotTrainer params
@@ -1085,13 +1106,13 @@ class Weavel:
         minibatch_size: Optional[int] = 25,
         max_steps: Optional[int] = 20,
         # TextGradientTrainer params
-        batch_size: Optional[int] = 4,      
-        early_stopping_rounds: Optional[int] = 10,      
+        batch_size: Optional[int] = 4,
+        early_stopping_rounds: Optional[int] = 10,
         validation_type: Optional[Literal["trainset", "valset", "all"]] = "trainset",
         # TextGradientTrainer & ExpelTrainer params
         max_proposals_per_step: Optional[int] = 5,
         # ExpelTrainer params
-        target_subgroup: Literal["success", "failure", "all"] = "all"
+        target_subgroup: Literal["success", "failure", "all"] = "all",
     ) -> Prompt:
         # Set or create base prompt
         if isinstance(base_prompt, Prompt):
@@ -1099,7 +1120,9 @@ class Weavel:
                 try:
                     wv_prompt = await self.afetch_prompt(name=base_prompt.name)
                 except Exception:
-                    wv_prompt = await self.acreate_prompt(name=base_prompt.name or str(uuid4()))
+                    wv_prompt = await self.acreate_prompt(
+                        name=base_prompt.name or str(uuid4())
+                    )
 
                 base_prompt = await self.acreate_prompt_version(
                     prompt_name=wv_prompt.name,
@@ -1117,10 +1140,10 @@ class Weavel:
                 )
         dataset_created = False
         if not isinstance(trainset, WvDataset):
-            dataset_name = f"trainset-prompt-{wv_prompt.name or wv_prompt.uuid}-{uuid4()}"
-            dataset = await self.acreate_dataset(
-                name=dataset_name
+            dataset_name = (
+                f"trainset-prompt-{wv_prompt.name or wv_prompt.uuid}-{uuid4()}"
             )
+            dataset = await self.acreate_dataset(name=dataset_name)
             dataset_created = True
             dataset_items = [
                 WvDatasetItem(inputs=item["inputs"], outputs=item["outputs"])
@@ -1134,11 +1157,10 @@ class Weavel:
                 dataset = trainset
             dataset_items = trainset.items
 
-
         trainset = [
             DatasetItem(inputs=d.inputs, outputs=d.outputs) for d in dataset_items
         ]
-        
+
         evaluator = Evaluator(
             metric=metric,
             global_metric=global_metric,
@@ -1158,7 +1180,7 @@ class Weavel:
                         "base_prompt_version_uuid": base_prompt.uuid,
                         "models": models,
                         "trainset_uuid": dataset.uuid,
-                        "method": method,
+                        "algorithm": algorithm,
                         "num_candidates": num_candidates,
                         "max_bootstrapped_demos": max_bootstrapped_demos,
                         "max_labeled_demos": max_labeled_demos,
@@ -1178,4 +1200,3 @@ class Weavel:
                 if dataset_created:
                     await self.adelete_dataset(dataset.name)
                 return Prompt(**res["optimized_prompt"])
-        

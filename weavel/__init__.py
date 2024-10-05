@@ -4,4 +4,4 @@ from .object_clients import SessionClient, TraceClient, SpanClient, GenerationCl
 
 from .utils import *
 
-__version___ = "1.10.2"
+__version___ = "1.10.0"

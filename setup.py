@@ -1,5 +1,5 @@
 """
-Weavel, natural language analysis Dashboard for LLM Agent
+Weavel, automated prompt engineering and observability for LLM applications
 """
 
 from setuptools import setup, find_namespace_packages
@@ -10,10 +10,10 @@ with open("README.md", "r") as fh:
 
 setup(
     name="weavel",
-    version="1.10.2",
+    version="1.10.0",
     packages=find_namespace_packages(),
     entry_points={},
-    description="Weavel, Prompt Optimization and Evaluation for LLM Applications",
+    description="Weavel, automated prompt engineering and observability for LLM applications",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="weavel",
@@ -34,6 +34,7 @@ setup(
         "readerwriterlock",
         "nest_asyncio",
         "tenacity",
+        "ape-common>=0.2.0",
     ],
     python_requires=">=3.8.10",
     keywords=[
