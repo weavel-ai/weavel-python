@@ -16,11 +16,11 @@ from openai.lib._parsing._completions import type_to_response_format_param
 
 from ape.common import (
     Prompt,
-    BaseGenerate,
-    Generate,
+    BaseGenerator,
+    Generator,
     BaseMetric,
     BaseGlobalMetric,
-    Evaluate,
+    Evaluator,
 )
 from ape.common.types import ResponseFormat, DatasetItem, MetricResult, GlobalMetricResult
 from ape.common.types.response_format import OpenAIResponseFormat
@@ -77,11 +77,11 @@ class Weavel:
             flush_batch_size=flush_batch_size,
         )
         self.ws_client = WebsocketClient(api_key=api_key, base_url=base_url)
-        self._generate_var: contextvars.ContextVar[Optional[BaseGenerate]] = (
-            contextvars.ContextVar("generate")
+        self._generator_var: contextvars.ContextVar[Optional[BaseGenerator]] = (
+            contextvars.ContextVar("generator")
         )
-        self._evaluate_var: contextvars.ContextVar[Optional[Evaluate]] = (
-            contextvars.ContextVar("evaluate")
+        self._evaluator_var: contextvars.ContextVar[Optional[Evaluator]] = (
+            contextvars.ContextVar("evaluator")
         )
         self._trainset_var: contextvars.ContextVar[Optional[List[DatasetItem]]] = (
             contextvars.ContextVar("trainset")
@@ -944,31 +944,32 @@ class Weavel:
 
     @contextmanager
     def _ape_context(
-        self, generate: Optional[BaseGenerate], 
-        evaluate: Optional[Evaluate],
+        self, 
+        generator: Optional[BaseGenerator], 
+        evaluator: Optional[Evaluator],
         metric: Optional[BaseMetric],
         trainset: Optional[List[DatasetItem]],
         global_metric: Optional[BaseGlobalMetric] = AverageGlobalMetric()
     ):
-        token_generate = self._generate_var.set(generate)
-        token_evaluate = self._evaluate_var.set(evaluate)
+        token_generator = self._generator_var.set(generator)
+        token_evaluator = self._evaluator_var.set(evaluator)
         token_trainset = self._trainset_var.set(trainset)
         token_metric = self._metric_var.set(metric)
         token_global_metric = self._global_metric_var.set(global_metric)
         try:
             yield
         finally:
-            self._generate_var.reset(token_generate)
-            self._evaluate_var.reset(token_evaluate)
+            self._generator_var.reset(token_generator)
+            self._evaluator_var.reset(token_evaluator)
             self._trainset_var.reset(token_trainset)
             self._metric_var.reset(token_metric)
             self._global_metric_var.reset(token_global_metric)
             
-    def _get_generate(self) -> Optional[BaseGenerate]:
-        return self._generate_var.get()
+    def _get_generator(self) -> Optional[BaseGenerator]:
+        return self._generator_var.get()
 
-    def _get_evaluate(self) -> Optional[Evaluate]:
-        return self._evaluate_var.get()
+    def _get_evaluator(self) -> Optional[Evaluator]:
+        return self._evaluator_var.get()
 
     def _get_trainset(self) -> Optional[List[DatasetItem]]:
         return self._trainset_var.get()
@@ -985,24 +986,24 @@ class Weavel:
     @websocket_handler(WsLocalTask.GENERATE.value)
     async def handle_generation_request(self, data: WsLocalGenerateRequest):
         logger.debug("Handling generation request...")
-        generate = self._get_generate()
-        if not generate:
+        generator = self._get_generator()
+        if not generator:
             raise AttributeError("Generate not set")
-        return await generate(prompt=Prompt(**data["prompt"]), inputs=data["inputs"])
+        return await generator(prompt=Prompt(**data["prompt"]), inputs=data["inputs"])
 
     @websocket_handler(WsLocalTask.EVALUATE.value)
     async def handle_evaluation_request(self, data: WsLocalEvaluateRequest) -> WsLocalEvaluateResponse:
         logger.debug("Handling evaluation request...")
-        evaluate = self._get_evaluate()
+        evaluator = self._get_evaluator()
         trainset = self._get_trainset()
-        if not evaluate:
+        if not evaluator:
             raise AttributeError("Evaluation not set")
         return_only_score = data.get("return_only_score", True)
         
         logger.debug(f"Evaluating {len(trainset)} items")
         logger.debug(f"Return Only Score : {return_only_score}")
         if return_only_score:
-            score = await evaluate(
+            score = await evaluator(
                 prompt=Prompt(**data["prompt"]),
                 testset=trainset,
                 return_only_score=True
@@ -1011,7 +1012,7 @@ class Weavel:
                 "score": score,
             }
         else:
-            preds, eval_results, global_result = await evaluate(
+            preds, eval_results, global_result = await evaluator(
                 prompt=Prompt(**data["prompt"]),
                 testset=trainset,
                 return_only_score=False,
@@ -1071,7 +1072,7 @@ class Weavel:
         models: List[str],
         metric: BaseMetric,
         trainset: List[DatasetItem] | WvDataset,
-        generate: Optional[BaseGenerate] = Generate(),
+        generator: Optional[BaseGenerator] = Generator(),
         global_metric: Optional[BaseGlobalMetric] = None,
         method: Literal["dspy_mipro", "few_shot", "text_gradient", "optuna", "expel"] = "dspy_mipro",
         # DspyMiproTrainer & OptunaTrainer & FewShotTrainer params
@@ -1138,15 +1139,15 @@ class Weavel:
             DatasetItem(inputs=d.inputs, outputs=d.outputs) for d in dataset_items
         ]
         
-        evaluate = Evaluate(
+        evaluator = Evaluator(
             metric=metric,
             global_metric=global_metric,
             testset=trainset,
         )
 
         with self._ape_context(
-            generate=generate,
-            evaluate=evaluate,
+            generator=generator,
+            evaluator=evaluator,
             metric=metric,
             trainset=trainset,
         ):
