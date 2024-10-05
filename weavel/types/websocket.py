@@ -1,22 +1,18 @@
-from enum import StrEnum
+from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Union
 from typing_extensions import TypedDict
 from openai.types.chat.completion_create_params import ChatCompletionMessageParam
 from ape.common.types import DatasetItem, MetricResult, GlobalMetricResult
-class WsLocalTask(StrEnum):
+
+class WsLocalTask(Enum):
     GENERATE = "GENERATE"
     EVALUATE = "EVALUATE"
     METRIC = "METRIC"
     GLOBAL_METRIC = "GLOBAL_METRIC"
 
 
-class WsServerTask(StrEnum):
+class WsServerTask(Enum):
     OPTIMIZE = "OPTIMIZE"
-
-
-class WsServerOptimizeResponse(StrEnum):
-    OPTIMIZATION_COMPLETE = "OPTIMIZATION_COMPLETE"
-
 
 class BaseWsLocalRequest(TypedDict):
     type: WsLocalTask

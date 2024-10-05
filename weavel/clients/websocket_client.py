@@ -212,6 +212,8 @@ class WebsocketClient:
         return [
             WsLocalTask.GENERATE.value,
             WsLocalTask.EVALUATE.value,
+            WsLocalTask.METRIC.value,
+            WsLocalTask.GLOBAL_METRIC.value,
             # Add other message types as needed
         ]
 
@@ -370,7 +372,7 @@ class WebsocketClient:
 
         message = {
             "correlation_id": correlation_id,
-            "type": type.value,
+            "type": type.value if isinstance(type, WsServerTask) else type,
             "data": data,
         }
         try:

@@ -49,7 +49,6 @@ from weavel.types.websocket import (
     WsLocalGlobalMetricRequest,
     WsLocalMetricRequest,
     WsLocalTask,
-    WsServerOptimizeResponse,
     WsServerTask,
 )
 
@@ -1131,7 +1130,7 @@ class Weavel:
             ):
                 async with self.ws_client:
                     res = await self.ws_client.request(
-                        type=WsServerTask.OPTIMIZE,
+                        type=WsServerTask.OPTIMIZE.value,
                         data={
                             "base_prompt_version_uuid": wv_prompt_version.uuid,
                             "models": models,
