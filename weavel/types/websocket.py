@@ -2,8 +2,7 @@ from enum import StrEnum
 from typing import Any, Dict, Iterable, List, Optional, Union
 from typing_extensions import TypedDict
 from openai.types.chat.completion_create_params import ChatCompletionMessageParam
-from ape.common.types import DatasetItem
-
+from ape.common.types import DatasetItem, MetricResult, GlobalMetricResult
 class WsLocalTask(StrEnum):
     GENERATE = "GENERATE"
     EVALUATE = "EVALUATE"
@@ -30,13 +29,13 @@ class WsLocalGenerateRequest(BaseWsLocalRequest):
 
 class WsLocalEvaluateRequest(BaseWsLocalRequest):
     prompt: Dict[str, Any]
-    start_idx: Optional[int] = None
-    end_idx: Optional[int] = None
 
 
 class WsLocalEvaluateResponse(TypedDict):
-    score: float
-    results: List[Dict[str, Any]]
+    score: Optional[float]
+    preds: Optional[List[Union[str, Dict[str, Any]]]]
+    eval_results: Optional[List[MetricResult]]
+    global_result: Optional[GlobalMetricResult]
 
 
 class WsLocalMetricRequest(BaseWsLocalRequest):
