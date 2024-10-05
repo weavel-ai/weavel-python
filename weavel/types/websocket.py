@@ -7,6 +7,7 @@ class WsLocalTask(StrEnum):
     GENERATE = "GENERATE"
     EVALUATE = "EVALUATE"
     METRIC = "METRIC"
+    GLOBAL_METRIC = "GLOBAL_METRIC"
 
 
 class WsServerTask(StrEnum):
@@ -37,6 +38,11 @@ class WsLocalEvaluateResponse(TypedDict):
     eval_results: Optional[List[MetricResult]]
     global_result: Optional[GlobalMetricResult]
 
+class WsLocalGlobalMetricRequest(BaseWsLocalRequest):
+    results: List[MetricResult]
+    
+class WsLocalGlobalMetricResponse(TypedDict):
+    global_result: GlobalMetricResult
 
 class WsLocalMetricRequest(BaseWsLocalRequest):
     dataset_item: DatasetItem
