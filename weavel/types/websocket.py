@@ -4,14 +4,14 @@ from typing_extensions import TypedDict
 from openai.types.chat.completion_create_params import ChatCompletionMessageParam
 from ape.common.types import DatasetItem, MetricResult, GlobalMetricResult
 
-class WsLocalTask(Enum):
+class WsLocalTask(str, Enum):
     GENERATE = "GENERATE"
     EVALUATE = "EVALUATE"
     METRIC = "METRIC"
     GLOBAL_METRIC = "GLOBAL_METRIC"
 
 
-class WsServerTask(Enum):
+class WsServerTask(str, Enum):
     OPTIMIZE = "OPTIMIZE"
 
 class BaseWsLocalRequest(TypedDict):

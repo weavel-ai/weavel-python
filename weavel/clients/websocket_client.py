@@ -210,10 +210,10 @@ class WebsocketClient:
         Add all relevant message types that should reset the timeout here.
         """
         return [
-            WsLocalTask.GENERATE.value,
-            WsLocalTask.EVALUATE.value,
-            WsLocalTask.METRIC.value,
-            WsLocalTask.GLOBAL_METRIC.value,
+            WsLocalTask.GENERATE,
+            WsLocalTask.EVALUATE,
+            WsLocalTask.METRIC,
+            WsLocalTask.GLOBAL_METRIC,
             # Add other message types as needed
         ]
 
@@ -372,7 +372,7 @@ class WebsocketClient:
 
         message = {
             "correlation_id": correlation_id,
-            "type": type.value if isinstance(type, WsServerTask) else type,
+            "type": type,
             "data": data,
         }
         try:

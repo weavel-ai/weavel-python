@@ -945,7 +945,7 @@ class Weavel:
     def _set_global_metric(self, global_metric: Optional[BaseGlobalMetric]):
         self._global_metric_var.set(global_metric)
 
-    @websocket_handler(WsLocalTask.GENERATE.value)
+    @websocket_handler(WsLocalTask.GENERATE)
     async def handle_generation_request(self, data: WsLocalGenerateRequest):
         logger.debug("Handling generation request...")
         generator = self._get_generator()
@@ -953,7 +953,7 @@ class Weavel:
             raise AttributeError("Generate not set")
         return await generator(prompt=Prompt(**data["prompt"]), inputs=data["inputs"])
 
-    @websocket_handler(WsLocalTask.EVALUATE.value)
+    @websocket_handler(WsLocalTask.EVALUATE)
     async def handle_evaluation_request(
         self, data: WsLocalEvaluateRequest
     ) -> WsLocalEvaluateResponse:
@@ -987,7 +987,7 @@ class Weavel:
                 "global_result": global_result.model_dump(),
             }
 
-    @websocket_handler(WsLocalTask.METRIC.value)
+    @websocket_handler(WsLocalTask.METRIC)
     async def handle_metric_request(self, data: WsLocalMetricRequest):
         logger.debug("Handling metric request...")
         metric = self._get_metric()
@@ -996,7 +996,7 @@ class Weavel:
         res = await metric(dataset_item=data["dataset_item"], pred=data["pred"])
         return res.model_dump()
 
-    @websocket_handler(WsLocalTask.GLOBAL_METRIC.value)
+    @websocket_handler(WsLocalTask.GLOBAL_METRIC)
     async def handle_global_metric_request(self, data: WsLocalGlobalMetricRequest):
         logger.debug("Handling global metric request...")
         global_metric = self._get_global_metric()
@@ -1006,7 +1006,7 @@ class Weavel:
         res = await global_metric(results=results)
         return res.model_dump()
 
-    @websocket_handler(WsServerTask.OPTIMIZE.value)
+    @websocket_handler(WsServerTask.OPTIMIZE)
     async def handle_optimization_result(self, data: Dict[str, Any]):
         # Extract the correlation_id from the response data
         correlation_id = data.get("correlation_id")
@@ -1130,7 +1130,7 @@ class Weavel:
             ):
                 async with self.ws_client:
                     res = await self.ws_client.request(
-                        type=WsServerTask.OPTIMIZE.value,
+                        type=WsServerTask.OPTIMIZE,
                         data={
                             "base_prompt_version_uuid": wv_prompt_version.uuid,
                             "models": models,
