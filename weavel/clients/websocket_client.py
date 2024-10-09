@@ -119,8 +119,8 @@ class WebsocketClient:
                 self.endpoint,
                 extra_headers=headers,
                 ping_interval=30,
-                ping_timeout=10,
-                close_timeout=60,
+                ping_timeout=60,
+                close_timeout=60 * 5,
             )
             logger.info("WebSocket connection established")
             self.heartbeat_task = asyncio.create_task(self.heartbeat())
@@ -197,10 +197,6 @@ class WebsocketClient:
                 else:
                     logger.warning(f"Unknown message type: {message_type}")
 
-                # Optionally handle reset events or other logic here
-                if message_type in self.relevant_message_types():
-                    logger.debug(f"Ignoring reset_event for {message_type}")
-
             except Exception:
                 logger.exception("Error processing message")
 
@@ -210,8 +206,10 @@ class WebsocketClient:
         Add all relevant message types that should reset the timeout here.
         """
         return [
-            WsLocalTask.GENERATE.value,
-            WsLocalTask.EVALUATE.value,
+            WsLocalTask.GENERATE,
+            WsLocalTask.EVALUATE,
+            WsLocalTask.METRIC,
+            WsLocalTask.GLOBAL_METRIC,
             # Add other message types as needed
         ]
 
@@ -370,7 +368,7 @@ class WebsocketClient:
 
         message = {
             "correlation_id": correlation_id,
-            "type": type.value,
+            "type": type,
             "data": data,
         }
         try:

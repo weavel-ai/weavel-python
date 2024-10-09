@@ -49,7 +49,6 @@ from weavel.types.websocket import (
     WsLocalGlobalMetricRequest,
     WsLocalMetricRequest,
     WsLocalTask,
-    WsServerOptimizeResponse,
     WsServerTask,
 )
 
@@ -90,7 +89,7 @@ class Weavel:
             flush_interval=flush_interval,
             flush_batch_size=flush_batch_size,
         )
-        self.ws_client = WebsocketClient(api_key=api_key, base_url=base_url)
+        self.ws_client = WebsocketClient(api_key=self.api_key, base_url=self.base_url)
         self._generator_var: contextvars.ContextVar[Optional[BaseGenerator]] = (
             contextvars.ContextVar("generator")
         )
@@ -946,7 +945,7 @@ class Weavel:
     def _set_global_metric(self, global_metric: Optional[BaseGlobalMetric]):
         self._global_metric_var.set(global_metric)
 
-    @websocket_handler(WsLocalTask.GENERATE.value)
+    @websocket_handler(WsLocalTask.GENERATE)
     async def handle_generation_request(self, data: WsLocalGenerateRequest):
         logger.debug("Handling generation request...")
         generator = self._get_generator()
@@ -954,7 +953,7 @@ class Weavel:
             raise AttributeError("Generate not set")
         return await generator(prompt=Prompt(**data["prompt"]), inputs=data["inputs"])
 
-    @websocket_handler(WsLocalTask.EVALUATE.value)
+    @websocket_handler(WsLocalTask.EVALUATE)
     async def handle_evaluation_request(
         self, data: WsLocalEvaluateRequest
     ) -> WsLocalEvaluateResponse:
@@ -988,7 +987,7 @@ class Weavel:
                 "global_result": global_result.model_dump(),
             }
 
-    @websocket_handler(WsLocalTask.METRIC.value)
+    @websocket_handler(WsLocalTask.METRIC)
     async def handle_metric_request(self, data: WsLocalMetricRequest):
         logger.debug("Handling metric request...")
         metric = self._get_metric()
@@ -997,7 +996,7 @@ class Weavel:
         res = await metric(dataset_item=data["dataset_item"], pred=data["pred"])
         return res.model_dump()
 
-    @websocket_handler(WsLocalTask.GLOBAL_METRIC.value)
+    @websocket_handler(WsLocalTask.GLOBAL_METRIC)
     async def handle_global_metric_request(self, data: WsLocalGlobalMetricRequest):
         logger.debug("Handling global metric request...")
         global_metric = self._get_global_metric()
@@ -1007,7 +1006,7 @@ class Weavel:
         res = await global_metric(results=results)
         return res.model_dump()
 
-    @websocket_handler(WsServerTask.OPTIMIZE.value)
+    @websocket_handler(WsServerTask.OPTIMIZE)
     async def handle_optimization_result(self, data: Dict[str, Any]):
         # Extract the correlation_id from the response data
         correlation_id = data.get("correlation_id")
@@ -1101,7 +1100,7 @@ class Weavel:
             dataset = await self.acreate_dataset(name=dataset_name)
             dataset_created = True
             dataset_items = [
-                WvDatasetItem(inputs=item["inputs"], outputs=item["outputs"])
+                WvDatasetItem(inputs=item["inputs"], outputs=item.get("outputs", None))
                 for item in trainset
             ]
             await self.acreate_dataset_items(dataset_name, dataset_items)

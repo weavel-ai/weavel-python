@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="weavel",
-    version="1.11.0",
+    version="1.11.1"
     packages=find_namespace_packages(),
     entry_points={},
     description="Weavel, automated prompt engineering and observability for LLM applications",
