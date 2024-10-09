@@ -90,7 +90,7 @@ class Weavel:
             flush_interval=flush_interval,
             flush_batch_size=flush_batch_size,
         )
-        self.ws_client = WebsocketClient(api_key=api_key, base_url=base_url)
+        self.ws_client = WebsocketClient(api_key=self.api_key, base_url=self.base_url)
         self._generator_var: contextvars.ContextVar[Optional[BaseGenerator]] = (
             contextvars.ContextVar("generator")
         )
@@ -1101,7 +1101,7 @@ class Weavel:
             dataset = await self.acreate_dataset(name=dataset_name)
             dataset_created = True
             dataset_items = [
-                WvDatasetItem(inputs=item["inputs"], outputs=item["outputs"])
+                WvDatasetItem(inputs=item["inputs"], outputs=item.get("outputs", None))
                 for item in trainset
             ]
             await self.acreate_dataset_items(dataset_name, dataset_items)
