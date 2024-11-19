@@ -1093,10 +1093,11 @@ class Weavel:
             raise ValueError(
                 "base_prompt must be either a Prompt or WvPromptVersion object"
             )
+        prompt_name = wv_prompt.name
 
         dataset_created = False
         if not isinstance(trainset, WvDataset):
-            dataset_name = f"trainset-{uuid4()}"
+            dataset_name = f"prompt-{prompt_name}-trainset-{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
             dataset = await self.acreate_dataset(name=dataset_name)
             dataset_created = True
             dataset_items = [
